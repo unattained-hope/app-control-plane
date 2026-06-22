@@ -1,0 +1,63 @@
+{
+  "name": "apoaap-control-plane",
+  "version": "0.1.0-mvp",
+  "private": true,
+  "type": "module",
+  "description": "Apoaap Control Plane (MVP) — internal multi-app admin for the Apoaap Shopify-app portfolio. See openspec change admin-control-plane-mvp in the badgey repo.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "start": "node ./server/start.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "node scripts/check-no-app-db-writes.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@casl/ability": "^6.7.1",
+    "@prisma/client": "^6.0.0",
+    "@prisma/extension-read-replicas": "^0.4.0",
+    "@react-router/express": "^7.0.0",
+    "@react-router/node": "^7.0.0",
+    "@react-router/serve": "^7.0.0",
+    "express": "^4.21.0",
+    "@tanstack/react-query": "^5.59.0",
+    "@tanstack/react-table": "^8.20.0",
+    "@trpc/client": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "@trpc/server": "^11.0.0",
+    "@workos-inc/authkit-react-router": "^0.4.0",
+    "bullmq": "^5.13.0",
+    "ioredis": "^5.4.1",
+    "isbot": "^5.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router": "^7.0.0",
+    "socket.io": "^4.8.0",
+    "socket.io-client": "^4.8.0",
+    "@socket.io/redis-adapter": "^8.3.0",
+    "@sentry/node": "^8.30.0",
+    "@sentry/react": "^8.30.0",
+    "@tremor/react": "^3.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7.0.0",
+    "@types/node": "^22.5.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "prisma": "^6.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vite-tsconfig-paths": "^5.0.0",
+    "vitest": "^2.1.0"
+  }
+}

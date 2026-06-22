@@ -1,0 +1,26 @@
+# CI gate (cp-platform-infrastructure AC9.5). Deploy MUST NOT proceed if any of
+# typecheck, unit tests, or the connector smoke/replica tests fail.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Architecture guard (no app-DB writes / replica-only)
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit + connector smoke/replica tests
+        run: npm test
+  # The deploy job (omitted) `needs: verify`, so a failing check blocks deploy.

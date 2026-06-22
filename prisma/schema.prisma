@@ -1,0 +1,163 @@
+// Apoaap Control Plane — its OWN Postgres (cp-platform-infrastructure).
+// Merchant business data is READ LIVE from the SaleSwitch replica via the
+// connector; it is NEVER copied here (except KpiSnapshot rollups).
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/control-plane"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CONTROL_PLANE_DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  SUPPORT
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum AppStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ConvStatus {
+  OPEN
+  SNOOZED
+  CLOSED
+}
+
+enum SenderType {
+  MERCHANT
+  AGENT
+  SYSTEM
+}
+
+/// Mirrors WorkOS identity; role lives here.
+model AdminUser {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  name      String?
+  role      Role       @default(VIEWER)
+  status    UserStatus @default(ACTIVE)
+  lastLogin DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("admin_users")
+}
+
+/// The tenant catalog / app registry.
+model App {
+  id             String    @id @default(cuid())
+  key            String    @unique // "saleswitch"
+  name           String
+  status         AppStatus @default(ACTIVE)
+  themeTokens    Json? // accent/logo for per-app theming (v1)
+  replicaRef     String // secrets-manager KEY, NOT a raw DSN
+  enabledModules String[] // ["merchants","billing","chat","dashboard"]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("apps")
+}
+
+/// Append-only. Never updated or deleted (cp-audit-log).
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  appKey       String
+  merchantShop String? // shop domain if action targets a merchant
+  action       String // e.g. "merchant.note.add", "user.role.change"
+  target       String?
+  before       Json?
+  after        Json?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  @@index([appKey, createdAt])
+  @@index([merchantShop])
+  @@index([actorUserId])
+  @@map("audit_logs")
+}
+
+/// Control-plane-owned annotations on a merchant (safe writes).
+model MerchantNote {
+  id        String   @id @default(cuid())
+  appKey    String
+  shop      String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([appKey, shop])
+  @@map("merchant_notes")
+}
+
+model MerchantTag {
+  id        String   @id @default(cuid())
+  appKey    String
+  shop      String
+  label     String
+  createdAt DateTime @default(now())
+
+  @@unique([appKey, shop, label])
+  @@map("merchant_tags")
+}
+
+/// Support inbox (in-house chat).
+model Conversation {
+  id            String     @id @default(cuid())
+  appKey        String
+  shop          String
+  status        ConvStatus @default(OPEN)
+  assignedTo    String? // AdminUser id (manual assign in MVP)
+  subject       String?
+  unreadCount   Int        @default(0)
+  lastMessageAt DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  messages Message[]
+
+  @@index([appKey, status, lastMessageAt])
+  @@index([shop])
+  @@map("conversations")
+}
+
+model Message {
+  id             String     @id @default(cuid())
+  conversationId String
+  senderType     SenderType
+  senderId       String // shop or AdminUser id
+  body           String
+  attachmentUrl  String? // real HTTP(S) URL — never blob:
+  createdAt      DateTime   @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+/// Pre-aggregated KPIs (refreshed by BullMQ). Dashboard reads these, not live joins.
+model KpiSnapshot {
+  id        String   @id @default(cuid())
+  appKey    String
+  metric    String // "active_merchants", "mrr", ...
+  value     Float
+  asOf      DateTime
+  createdAt DateTime @default(now())
+
+  @@index([appKey, metric, asOf])
+  @@map("kpi_snapshots")
+}
