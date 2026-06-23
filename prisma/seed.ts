@@ -1,4 +1,4 @@
-import { PrismaClient } from ".prisma/control-plane";
+import { PrismaClient } from "@prisma/client";
 import { SALESWITCH_REPLICA_REF } from "../app/lib/secrets.js";
 
 /**

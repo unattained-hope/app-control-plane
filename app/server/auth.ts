@@ -1,4 +1,4 @@
-import type { Role } from ".prisma/control-plane";
+import type { Role } from "@prisma/client";
 import { getDb } from "./db.js";
 import { getConfig } from "~/lib/config.js";
 

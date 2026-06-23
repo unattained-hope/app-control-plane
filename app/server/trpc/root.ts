@@ -1,6 +1,7 @@
 import { router } from "./core.js";
 import type { Context } from "./core.js";
 import { resolveIdentity } from "../auth.js";
+import { resolveDevIdentity } from "../devSession.js";
 import { directoryRouter } from "./routers/directory.js";
 import { actionsRouter } from "./routers/actions.js";
 import { auditRouter } from "./routers/audit.js";
@@ -26,7 +27,10 @@ const DEFAULT_APP_KEY = "saleswitch";
 
 /** Build the request-scoped tRPC context from an incoming Request. */
 export async function createContext(req: Request): Promise<Context> {
-  const identity = await resolveIdentity(req.headers);
+  // Dev cookie session (gated to development) takes precedence so browser tests
+  // can exercise real RBAC; production resolves identity only via WorkOS.
+  const identity =
+    (await resolveDevIdentity(req.headers)) ?? (await resolveIdentity(req.headers));
   const url = new URL(req.url);
   const appKey = url.searchParams.get("app") ?? DEFAULT_APP_KEY;
   return {

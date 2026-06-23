@@ -4,7 +4,8 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/control-plane"
+  // Default output (node_modules/@prisma/client) — the standard specifier every
+  // tool (tsc/tsx/vite-SSR/vitest/node) resolves natively. One schema, no custom dir.
 }
 
 datasource db {

@@ -7,3 +7,8 @@ node_modules
 *.local
 .DS_Store
 coverage
+
+# Playwright
+test-results
+playwright-report
+.cache

@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from ".prisma/control-plane";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { getDb } from "../db.js";
 
 /**

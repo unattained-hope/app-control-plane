@@ -1,4 +1,4 @@
-import type { ConvStatus, SenderType } from ".prisma/control-plane";
+import type { ConvStatus, SenderType } from "@prisma/client";
 import { getDb } from "../db.js";
 
 /**

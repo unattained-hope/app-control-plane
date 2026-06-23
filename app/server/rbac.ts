@@ -3,7 +3,7 @@ import {
   createMongoAbility,
   type MongoAbility,
 } from "@casl/ability";
-import type { Role } from ".prisma/control-plane";
+import type { Role } from "@prisma/client";
 
 /**
  * Owned RBAC policy layer (cp-auth-rbac). Enforced SERVER-SIDE in tRPC middleware,

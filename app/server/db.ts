@@ -1,4 +1,4 @@
-import { PrismaClient } from ".prisma/control-plane";
+import { PrismaClient } from "@prisma/client";
 import { getConfig } from "~/lib/config.js";
 
 /**

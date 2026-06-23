@@ -6,7 +6,7 @@ import { getConfig } from "~/lib/config.js";
 import { getConversationService } from "../services/conversationService.js";
 import { getPresence } from "./presence.js";
 import { verifyShopToken, isAllowedOrigin } from "./sessionToken.js";
-import type { Role } from ".prisma/control-plane";
+import type { Role } from "@prisma/client";
 
 /**
  * Socket.IO chat gateway (cp-support-inbox). Transport is Socket.IO + Redis

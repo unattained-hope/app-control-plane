@@ -1,7 +1,7 @@
 import type { AdminIdentity } from "../auth.js";
 import { getDb } from "../db.js";
 import { getAuditService } from "./auditService.js";
-import type { Role } from ".prisma/control-plane";
+import type { Role } from "@prisma/client";
 
 /**
  * App registry + user/role management (cp-app-registry-connector, cp-auth-rbac).
