@@ -1,0 +1,41 @@
+/*
+ * Muted-Badgy design tokens (cp-visual-design). Single source of truth — Tailwind
+ * theme keys (cp.* and tremor.*) and the apoaap-* component CSS both read these.
+ *
+ * Derived from Badgy's brand orange (#FF8C00 / #FFB566 / #7A3B00) but MUTED for an
+ * information-first internal admin: a desaturated warm-amber accent used sparingly,
+ * warm-neutral surfaces, warm-charcoal text. All text/accent values verified for
+ * WCAG 2.1 AA contrast on their surfaces (see tasks 1.4 / 5.1).
+ */
+:root {
+  /* Surfaces — warm neutrals, NOT the saturated cream. */
+  --cp-bg: #fbfaf8; /* app background, warm off-white */
+  --cp-surface: #ffffff; /* cards, table, header */
+  --cp-surface-2: #f6f4f1; /* thead, subtle panels */
+  --cp-border: #e7e3dd; /* warm-gray dividers */
+
+  /* Text — warm charcoal scale (16.3 / 5.9 / 3.2 : 1 on surface). */
+  --cp-text: #241f1b;
+  --cp-text-muted: #6b635b;
+  --cp-text-subtle: #9a8f84;
+
+  /* Accent — muted amber, restrained use only.
+     Text/link accent passes AA (4.7:1 on white); the lighter bar/marker accent is
+     for non-text UI cues (>=3:1). */
+  --cp-accent: #a8631f; /* links, active nav text, primary action — AA text */
+  --cp-accent-hover: #8f5114; /* hover/pressed */
+  --cp-accent-bar: #c77a33; /* active-nav indicator bar, focus ring (non-text) */
+  --cp-accent-subtle: #f7eee3; /* faint wash: active-nav bg, selected row */
+
+  /* Semantic (muted, AA as badge text on white). */
+  --cp-ok: #3f7a52;
+  --cp-warn: #946514;
+  --cp-danger: #b0453c;
+
+  /* Shape / depth / type. */
+  --cp-radius-sm: 0.5rem;
+  --cp-radius: 0.75rem;
+  --cp-shadow-card: 0 1px 2px rgba(36, 31, 27, 0.04), 0 1px 3px rgba(36, 31, 27, 0.06);
+  --cp-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}

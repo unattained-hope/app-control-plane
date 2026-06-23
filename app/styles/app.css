@@ -1,0 +1,417 @@
+@import "./tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    background: var(--cp-bg);
+    color: var(--cp-text);
+    font-family: var(--cp-font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+  }
+  a {
+    color: var(--cp-accent);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--cp-accent-hover);
+    text-decoration: underline;
+  }
+  /* Visible accent focus ring on every interactive element (task 5.2). */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--cp-accent-bar);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* ── App shell ──────────────────────────────────────────────────────── */
+  .apoaap-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--cp-bg);
+  }
+  .apoaap-shell-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    height: 56px;
+    padding: 0 1.25rem;
+    background: var(--cp-surface);
+    border-bottom: 1px solid var(--cp-border);
+  }
+  .apoaap-shell-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--cp-text);
+    white-space: nowrap;
+  }
+  .apoaap-shell-logo {
+    color: var(--cp-accent);
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .apoaap-shell-title {
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+  }
+  .apoaap-shell-body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+  .apoaap-shell-nav {
+    width: 200px;
+    flex-shrink: 0;
+    padding: 1rem 0.75rem;
+    background: var(--cp-surface);
+    border-right: 1px solid var(--cp-border);
+  }
+  .apoaap-shell-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .apoaap-shell-main {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+  }
+
+  /* ── Nav links (neutral default, accent active) ─────────────────────── */
+  .apoaap-nav-link {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--cp-radius-sm);
+    color: var(--cp-text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-left: 2px solid transparent;
+    text-decoration: none;
+  }
+  .apoaap-nav-link:hover {
+    background: var(--cp-surface-2);
+    color: var(--cp-text);
+    text-decoration: none;
+  }
+  .apoaap-nav-link.is-active,
+  .apoaap-nav-link[aria-current="page"] {
+    background: var(--cp-accent-subtle);
+    color: var(--cp-accent);
+    border-left-color: var(--cp-accent-bar);
+  }
+
+  /* ── App selector ───────────────────────────────────────────────────── */
+  .apoaap-app-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+  .apoaap-app-selector-label {
+    font-size: 0.75rem;
+    color: var(--cp-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .apoaap-app-select {
+    appearance: none;
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    padding: 0.35rem 1.75rem 0.35rem 0.625rem;
+    font-size: 0.85rem;
+    color: var(--cp-text);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b635b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+  }
+  .apoaap-app-select:disabled {
+    color: var(--cp-text-muted);
+    cursor: default;
+  }
+
+  /* ── Page main padding ──────────────────────────────────────────────── */
+  .apoaap-merchants,
+  .apoaap-audit {
+    padding: 1.5rem;
+  }
+
+  /* ── Cards / table containers ───────────────────────────────────────── */
+  .apoaap-merchant-table-card,
+  .apoaap-audit-table-card {
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    box-shadow: var(--cp-shadow-card);
+    overflow: hidden;
+  }
+  .apoaap-merchant-table-wrap,
+  .apoaap-audit-table-wrap {
+    overflow-x: auto;
+  }
+
+  /* ── Tables ─────────────────────────────────────────────────────────── */
+  .apoaap-merchant-table,
+  .apoaap-audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .apoaap-merchant-th,
+  .apoaap-audit-th {
+    text-align: left;
+    padding: 0.625rem 0.875rem;
+    background: var(--cp-surface-2);
+    color: var(--cp-text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--cp-border);
+    white-space: nowrap;
+  }
+  .apoaap-merchant-td,
+  .apoaap-audit-td {
+    padding: 0.7rem 0.875rem;
+    border-bottom: 1px solid var(--cp-border);
+    color: var(--cp-text);
+    vertical-align: top;
+  }
+  .apoaap-merchant-tr:last-child .apoaap-merchant-td,
+  .apoaap-audit-tr:last-child .apoaap-audit-td {
+    border-bottom: none;
+  }
+  .apoaap-merchant-tr:hover,
+  .apoaap-audit-tr:hover {
+    background: var(--cp-accent-subtle);
+  }
+  .apoaap-merchant-td-state,
+  .apoaap-audit-td-state {
+    color: var(--cp-text-muted);
+    text-align: center;
+    padding: 2rem 0.875rem;
+  }
+  .apoaap-th-sort {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .apoaap-th-sort:hover {
+    color: var(--cp-accent);
+  }
+  .apoaap-th-arrow {
+    color: var(--cp-accent);
+    font-size: 0.7rem;
+  }
+
+  /* ── Merchant cells ─────────────────────────────────────────────────── */
+  .apoaap-merchant-link {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+  }
+  .apoaap-merchant-name {
+    color: var(--cp-text);
+    font-weight: 600;
+  }
+  .apoaap-merchant-link:hover .apoaap-merchant-name {
+    color: var(--cp-accent);
+  }
+  .apoaap-merchant-shop {
+    color: var(--cp-text-subtle);
+    font-size: 0.78rem;
+  }
+
+  /* ── Search / filters ───────────────────────────────────────────────── */
+  .apoaap-merchant-search,
+  .apoaap-audit-filters {
+    margin-bottom: 1rem;
+  }
+  .apoaap-merchant-search-label,
+  .apoaap-audit-field label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--cp-text-muted);
+    margin-bottom: 0.3rem;
+  }
+  .apoaap-merchant-search-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .apoaap-merchant-search-input,
+  .apoaap-audit-field input,
+  .apoaap-audit-field select {
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    padding: 0.45rem 0.65rem;
+    font-size: 0.875rem;
+    color: var(--cp-text);
+    min-width: 14rem;
+  }
+  .apoaap-merchant-search-input::placeholder {
+    color: var(--cp-text-subtle);
+  }
+  .apoaap-merchant-search-hint {
+    font-size: 0.75rem;
+    color: var(--cp-text-subtle);
+    margin-top: 0.25rem;
+  }
+  .apoaap-audit-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.75rem;
+  }
+  .apoaap-audit-filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────────── */
+  .apoaap-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--cp-radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid var(--cp-accent);
+    background: var(--cp-accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  .apoaap-btn:hover {
+    background: var(--cp-accent-hover);
+    border-color: var(--cp-accent-hover);
+  }
+  .apoaap-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .apoaap-btn-secondary {
+    background: var(--cp-surface);
+    color: var(--cp-text);
+    border-color: var(--cp-border);
+  }
+  .apoaap-btn-secondary:hover {
+    background: var(--cp-surface-2);
+    border-color: var(--cp-border);
+  }
+
+  /* ── Pagination ─────────────────────────────────────────────────────── */
+  .apoaap-merchant-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.25rem;
+    flex-wrap: wrap;
+  }
+  .apoaap-merchant-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .apoaap-merchant-page-indicator,
+  .apoaap-merchant-page-size-label,
+  .apoaap-audit-count {
+    font-size: 0.8rem;
+    color: var(--cp-text-muted);
+  }
+
+  /* ── States ─────────────────────────────────────────────────────────── */
+  .apoaap-merchant-empty,
+  .apoaap-audit-empty {
+    text-align: center;
+    color: var(--cp-text-muted);
+    padding: 2.5rem 1rem;
+  }
+  .apoaap-error {
+    max-width: 32rem;
+    margin: 4rem auto;
+    padding: 1.5rem;
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-left: 3px solid var(--cp-danger);
+    border-radius: var(--cp-radius);
+    color: var(--cp-text);
+  }
+
+  /* ── Audit detail ───────────────────────────────────────────────────── */
+  .apoaap-audit-action {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--cp-text);
+  }
+  .apoaap-audit-json {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    color: var(--cp-text-muted);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-width: 22rem;
+  }
+
+  /* ── Chat widget ────────────────────────────────────────────────────── */
+  .apoaap-chat-widget {
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    background: var(--cp-surface);
+    padding: 0.75rem;
+  }
+  .apoaap-chat-compose {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+  .apoaap-chat-compose input {
+    flex: 1;
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    padding: 0.45rem 0.65rem;
+    font-size: 0.875rem;
+  }
+}

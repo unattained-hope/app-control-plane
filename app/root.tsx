@@ -6,11 +6,18 @@ import {
   ScrollRestoration,
   isRouteErrorResponse,
   useRouteError,
+  type LinksFunction,
 } from "react-router";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { trpc } from "~/lib/trpc.js";
+import appStylesHref from "~/styles/app.css?url";
+
+/** Load the single global stylesheet on every page (cp-visual-design). */
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: appStylesHref },
+];
 
 /** Document shell (RR7 Layout). Wraps every route, including the error boundary. */
 export function Layout({ children }: { children: React.ReactNode }) {
