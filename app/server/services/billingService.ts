@@ -1,5 +1,6 @@
 import { getConfig } from "~/lib/config.js";
 import { captureError } from "~/lib/observability.js";
+import { getConnector } from "../connectors/registry.js";
 import type { SubscriptionState } from "../connectors/types.js";
 
 /**
@@ -85,9 +86,26 @@ export class StubShopifySubscriptionReader implements ShopifySubscriptionReader 
   }
 }
 
+/**
+ * Connector-backed reader (cp-billing-monitoring). The control plane holds NO
+ * per-shop Shopify token, so the subscription state is read through the app
+ * connector against the REPLICA (`AppConnector.getSubscription()`) rather than a
+ * direct Shopify call. This keeps reads replica-only; the BillingService's TTL
+ * cache + stale-while-error behavior wraps it unchanged. A direct Shopify Admin API
+ * reader remains a later option if sub-replica-lag freshness is ever required.
+ */
+export class ConnectorSubscriptionReader implements ShopifySubscriptionReader {
+  constructor(private readonly appKey = "saleswitch") {}
+
+  async read(shop: string): Promise<SubscriptionState> {
+    const connector = await getConnector(this.appKey);
+    return connector.getSubscription(shop);
+  }
+}
+
 let instance: BillingService | null = null;
 export function getBillingService(): BillingService {
-  if (!instance) instance = new BillingService(new StubShopifySubscriptionReader());
+  if (!instance) instance = new BillingService(new ConnectorSubscriptionReader());
   return instance;
 }
 export function __setBillingService(svc: BillingService): void {

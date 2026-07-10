@@ -14,7 +14,13 @@ import {
   Textarea,
   Title,
 } from "@tremor/react";
+import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
+import type { AppRouter } from "~/server/trpc/root.js";
+
+type MerchantOverview = NonNullable<inferRouterOutputs<AppRouter>["directory"]["overview"]>;
+type ConversationSummary = MerchantOverview["conversations"][number];
+type AuditEntry = MerchantOverview["audit"][number];
 
 /**
  * Merchant detail (cp-merchant-directory + cp-billing-read + cp-merchant-actions).
@@ -70,6 +76,157 @@ const SUBSCRIPTION_LABEL: Readonly<Record<SubscriptionStatus, string>> = {
   none: "No subscription",
 };
 
+/**
+ * Email cell with an audited reveal (cp-pii-governance). The value arrives masked
+ * from the server; revealing it requires a typed reason and writes a
+ * `merchant.pii.view` audit row. Only roles with `pii:view` can reveal — others get
+ * a FORBIDDEN error surfaced inline. The unmasked value is held in component state
+ * only (never re-fetched into the directory).
+ */
+function RevealableEmail({
+  shop,
+  masked,
+}: {
+  readonly shop: string;
+  readonly masked: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [revealed, setRevealed] = useState<string | null>(null);
+
+  const reveal = trpc.actions.revealPii.useMutation({
+    onSuccess: (res) => {
+      setRevealed(res.value ?? "—");
+      setOpen(false);
+      setReason("");
+    },
+  });
+
+  if (revealed !== null) {
+    return <Text aria-label="Revealed email">{revealed}</Text>;
+  }
+
+  if (!masked) return <Text>—</Text>;
+
+  if (!open) {
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <Text aria-label="Masked email">{masked}</Text>
+        <Button size="xs" variant="light" type="button" onClick={() => setOpen(true)}>
+          Reveal
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      aria-label="Reveal email"
+      className="flex flex-col items-end gap-1"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!reason.trim() || reveal.isPending) return;
+        reveal.mutate({ shop, reason: reason.trim() });
+      }}
+    >
+      <TextInput
+        placeholder="Reason (audited)"
+        value={reason}
+        onValueChange={setReason}
+        aria-label="Reason for revealing PII"
+      />
+      <div className="flex gap-2">
+        <Button size="xs" type="submit" disabled={!reason.trim() || reveal.isPending}>
+          Confirm reveal
+        </Button>
+        <Button size="xs" variant="light" type="button" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+      {reveal.isError ? (
+        <Text className="text-xs text-rose-600" role="alert">
+          {reveal.error.message}
+        </Text>
+      ) : null}
+    </form>
+  );
+}
+
+const HEALTH_TONE: Readonly<Record<string, "emerald" | "amber" | "rose">> = {
+  HEALTHY: "emerald",
+  AT_RISK: "amber",
+  CRITICAL: "rose",
+};
+
+const HEALTH_LABEL: Readonly<Record<string, string>> = {
+  HEALTHY: "Healthy",
+  AT_RISK: "At risk",
+  CRITICAL: "Critical",
+};
+
+/**
+ * Merchant health (cp-merchant-health). Reads the latest pre-aggregated
+ * `MerchantHealthSnapshot` for the shop and shows its band + factor breakdown + the
+ * `asOf` timestamp (acknowledging snapshot lag). Absent until the growth rollup has
+ * scored the shop at least once.
+ */
+function HealthCard({ shop }: { readonly shop: string }) {
+  const health = trpc.health.forShop.useQuery({ shop });
+
+  if (health.isLoading) {
+    return (
+      <Card aria-label="Merchant health" aria-busy="true">
+        <Title>Health</Title>
+        <Text className="mt-2" role="status">
+          Loading health…
+        </Text>
+      </Card>
+    );
+  }
+
+  const row = health.data;
+  if (!row) {
+    return (
+      <Card aria-label="Merchant health">
+        <Title>Health</Title>
+        <Text className="mt-2 text-tremor-content-subtle">
+          Not yet scored — the growth rollup will populate this shortly.
+        </Text>
+      </Card>
+    );
+  }
+
+  return (
+    <Card aria-label="Merchant health">
+      <Flex justifyContent="between" alignItems="start">
+        <Title>Health</Title>
+        <Badge color={HEALTH_TONE[row.band] ?? "gray"} aria-label={`Health ${HEALTH_LABEL[row.band] ?? row.band}`}>
+          {HEALTH_LABEL[row.band] ?? row.band}
+        </Badge>
+      </Flex>
+      <Text className="mt-1 text-xs text-tremor-content-subtle">Risk score {row.score}</Text>
+
+      <Divider className="my-3" />
+
+      {row.factors.length === 0 ? (
+        <Text className="text-tremor-content-subtle">No risk factors. 🎉</Text>
+      ) : (
+        <List aria-label="Health factors">
+          {row.factors.map((f) => (
+            <ListItem key={f.key}>
+              <Text>{f.key}</Text>
+              <Text className="text-tremor-content-subtle">+{f.points}</Text>
+            </ListItem>
+          ))}
+        </List>
+      )}
+
+      <Divider className="my-3" />
+      <AsOf iso={row.asOf} />
+    </Card>
+  );
+}
+
 /** Field-value row used across the info / billing cards. */
 function DetailRow({
   label,
@@ -110,7 +267,7 @@ function ShopInfoCard({
       <Divider className="my-3" />
 
       <DetailRow label="Email">
-        <Text>{detail.email ?? "—"}</Text>
+        <RevealableEmail shop={shop} masked={detail.email} />
       </DetailRow>
       <DetailRow label="Status">
         <Badge aria-label={`Status ${detail.status}`}>{detail.status}</Badge>
@@ -420,11 +577,89 @@ function NotesCard({
   );
 }
 
+const CONV_STATUS_TONE: Readonly<Record<string, "emerald" | "amber" | "gray">> = {
+  OPEN: "emerald",
+  SNOOZED: "amber",
+  CLOSED: "gray",
+};
+
+/** Per-shop conversation history (cp-merchant-360), linking into the inbox. */
+function ConversationHistoryCard({
+  conversations,
+}: {
+  readonly conversations: readonly ConversationSummary[];
+}) {
+  return (
+    <Card aria-label="Conversation history">
+      <Flex justifyContent="between" alignItems="baseline">
+        <Title>Conversations</Title>
+        <Link to="/inbox" className="text-xs text-tremor-brand hover:underline">
+          Open inbox →
+        </Link>
+      </Flex>
+      {conversations.length === 0 ? (
+        <Text className="mt-2 text-tremor-content-subtle">No conversations for this shop.</Text>
+      ) : (
+        <List className="mt-2" aria-label="Shop conversations">
+          {conversations.map((c) => (
+            <ListItem key={c.id}>
+              <div className="flex flex-col">
+                <Flex justifyContent="start" alignItems="center" className="gap-2">
+                  <Badge color={CONV_STATUS_TONE[c.status] ?? "gray"}>{c.status}</Badge>
+                  {c.priority !== "NONE" ? (
+                    <Badge color="blue" aria-label={`Priority ${c.priority}`}>
+                      {c.priority}
+                    </Badge>
+                  ) : null}
+                  {c.csatScore != null ? (
+                    <Text className="text-xs text-emerald-700">CSAT {c.csatScore}/5</Text>
+                  ) : null}
+                </Flex>
+                <Text className="text-xs text-tremor-content-subtle">
+                  Last activity: {formatTimestamp(c.lastMessageAt)}
+                </Text>
+              </div>
+            </ListItem>
+          ))}
+        </List>
+      )}
+    </Card>
+  );
+}
+
+/** Per-shop audit trail (cp-merchant-360), newest first. */
+function AuditTrailCard({ audit }: { readonly audit: readonly AuditEntry[] }) {
+  return (
+    <Card aria-label="Audit trail">
+      <Title>Audit trail</Title>
+      {audit.length === 0 ? (
+        <Text className="mt-2 text-tremor-content-subtle">No audit entries for this shop.</Text>
+      ) : (
+        <List className="mt-2" aria-label="Shop audit entries">
+          {audit.map((a) => (
+            <ListItem key={a.id} className="flex-col items-start">
+              <Flex justifyContent="between" alignItems="baseline" className="w-full gap-2">
+                <code className="text-xs">{a.action}</code>
+                <Text className="text-xs text-tremor-content-subtle">
+                  <time dateTime={a.createdAt}>{formatTimestamp(a.createdAt)}</time>
+                </Text>
+              </Flex>
+              <Text className="text-xs text-tremor-content-subtle">
+                {a.actorEmail ?? a.actorUserId} · {a.source}
+              </Text>
+            </ListItem>
+          ))}
+        </List>
+      )}
+    </Card>
+  );
+}
+
 export default function MerchantDetail() {
   const params = useParams();
   const shop = params.shop ?? "";
 
-  const detailQuery = trpc.directory.detail.useQuery(
+  const detailQuery = trpc.directory.overview.useQuery(
     { shop },
     { enabled: shop.length > 0 },
   );
@@ -501,6 +736,7 @@ export default function MerchantDetail() {
 
       <Grid numItemsLg={2} className="gap-4">
         <ShopInfoCard shop={shop} detail={detail} />
+        <HealthCard shop={shop} />
         <BillingCard shop={shop} />
         <TagsCard
           shop={shop}
@@ -512,6 +748,8 @@ export default function MerchantDetail() {
           notes={detail.notes}
           onChanged={() => void detailQuery.refetch()}
         />
+        <ConversationHistoryCard conversations={detail.conversations} />
+        <AuditTrailCard audit={detail.audit} />
       </Grid>
     </main>
   );

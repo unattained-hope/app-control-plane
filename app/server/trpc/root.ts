@@ -8,7 +8,17 @@ import { auditRouter } from "./routers/audit.js";
 import { billingRouter } from "./routers/billing.js";
 import { dashboardRouter } from "./routers/dashboard.js";
 import { chatRouter } from "./routers/chat.js";
+import { cannedRouter } from "./routers/canned.js";
+import { routingRouter } from "./routers/routing.js";
 import { appRouter_ } from "./routers/app.js";
+import { complianceRouter } from "./routers/compliance.js";
+import { webhooksRouter } from "./routers/webhooks.js";
+import { monitoringRouter } from "./routers/monitoring.js";
+import { breakGlassRouter } from "./routers/breakGlass.js";
+import { healthRouter } from "./routers/health.js";
+import { flagsRouter } from "./routers/flags.js";
+import { announcementsRouter } from "./routers/announcements.js";
+import { plansRouter } from "./routers/plans.js";
 
 /** The single tRPC root router — end-to-end typed first-party API. */
 export const appRouter = router({
@@ -18,7 +28,19 @@ export const appRouter = router({
   billing: billingRouter,
   dashboard: dashboardRouter,
   chat: chatRouter,
+  canned: cannedRouter,
+  routing: routingRouter,
   app: appRouter_,
+  compliance: complianceRouter,
+  // Tier 2 — scale-readiness / ops resilience.
+  webhooks: webhooksRouter,
+  monitoring: monitoringRouter,
+  breakGlass: breakGlassRouter,
+  // Tier 3 — growth & retention.
+  health: healthRouter,
+  flags: flagsRouter,
+  announcements: announcementsRouter,
+  plans: plansRouter,
 });
 
 export type AppRouter = typeof appRouter;

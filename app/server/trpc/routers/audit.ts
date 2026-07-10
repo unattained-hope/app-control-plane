@@ -15,6 +15,8 @@ export const auditRouter = router({
         appKey: z.string().optional(),
         merchantShop: z.string().optional(),
         action: z.string().optional(),
+        actorType: z.enum(["INTERNAL", "SYSTEM"]).optional(),
+        source: z.enum(["UI", "API", "JOB"]).optional(),
         from: z.coerce.date().optional(),
         to: z.coerce.date().optional(),
         limit: z.number().int().positive().max(1000).optional(),

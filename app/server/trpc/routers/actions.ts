@@ -5,8 +5,13 @@ import {
   getMerchantActionService,
   ConfirmationError,
   AppApiUnavailableError,
+  ReasonRequiredError,
   type ActionContext,
 } from "../../services/merchantActionService.js";
+import {
+  BreakGlassRequiredError,
+  BreakGlassReasonRequiredError,
+} from "../../services/breakGlassService.js";
 import { getConnector } from "../../connectors/registry.js";
 import { defineAbilityFor } from "../../rbac.js";
 
@@ -26,8 +31,16 @@ function actionCtx(ctx: {
 }
 
 function mapActionError(err: unknown): never {
-  if (err instanceof ConfirmationError) {
+  if (
+    err instanceof ConfirmationError ||
+    err instanceof ReasonRequiredError ||
+    err instanceof BreakGlassReasonRequiredError
+  ) {
     throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+  }
+  if (err instanceof BreakGlassRequiredError) {
+    // No active grant — eligible but not currently authorized (cp-break-glass-rbac).
+    throw new TRPCError({ code: "FORBIDDEN", message: err.message });
   }
   if (err instanceof AppApiUnavailableError) {
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: err.message });
@@ -71,6 +84,19 @@ export const actionsRouter = router({
     .mutation(({ ctx, input }) =>
       getMerchantActionService()
         .removeTag(actionCtx(ctx, input.confirmText), input.shop, input.label)
+        .catch(mapActionError),
+    ),
+
+  /**
+   * Reveal masked merchant PII (cp-pii-governance). Gated by `pii:view`; a typed
+   * reason is required and every reveal writes a `merchant.pii.view` audit row.
+   */
+  revealPii: requireAbility("pii:view")
+    .input(z.object({ shop: z.string().min(1), reason: z.string() }))
+    .mutation(({ ctx, input }) =>
+      getMerchantActionService()
+        // confirmText is unused by revealPii (it gates on the typed reason instead).
+        .revealPii(actionCtx(ctx, ""), input.shop, input.reason)
         .catch(mapActionError),
     ),
 

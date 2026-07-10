@@ -1,5 +1,38 @@
-import { NavLink, Outlet } from "react-router";
+import {
+  NavLink,
+  Outlet,
+  redirect,
+  useLoaderData,
+  type LoaderFunctionArgs,
+} from "react-router";
+import type { Role } from "@prisma/client";
 import { trpc } from "~/lib/trpc.js";
+import { getConfig } from "~/lib/config.js";
+import { getWorkOs, resolveIdentity } from "~/server/auth.js";
+import { resolveDevIdentity } from "~/server/devSession.js";
+
+/**
+ * Auth gate for every shell-wrapped (authed) route. Without a resolved identity
+ * the whole app would otherwise render a dead UNAUTHORIZED screen with no way in,
+ * since tRPC rejects every procedure. So bounce unauthenticated requests to a
+ * sign-in path BEFORE rendering: in dev to the role switcher (default ADMIN, the
+ * fullest-access role for local work), in prod to the WorkOS sign-in URL. The
+ * e2e suite always visits `/dev-login` first, so it already carries the cookie
+ * and this redirect never fires for it.
+ */
+export async function loader({ request }: LoaderFunctionArgs) {
+  const identity =
+    (await resolveDevIdentity(request.headers)) ??
+    (await resolveIdentity(request.headers));
+  if (identity) return { role: identity.role };
+
+  const url = new URL(request.url);
+  const dest = encodeURIComponent(url.pathname + url.search);
+  if (getConfig().NODE_ENV === "development") {
+    throw redirect(`/dev-login?role=ADMIN&to=${dest}`);
+  }
+  throw redirect(getWorkOs().signInUrl());
+}
 
 /**
  * AppShell layout (cp-app-shell). Renders the global chrome shared by every
@@ -10,6 +43,10 @@ import { trpc } from "~/lib/trpc.js";
  * tRPC; the nav here is cosmetic navigation only.
  */
 export default function AppShell() {
+  const data = useLoaderData() as { role: Role } | null;
+  const role = data?.role ?? "VIEWER";
+  const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === "ADMIN");
+
   return (
     <div className="apoaap-shell">
       <header className="apoaap-shell-header">
@@ -25,7 +62,7 @@ export default function AppShell() {
       <div className="apoaap-shell-body">
         <nav className="apoaap-shell-nav" aria-label="Primary">
           <ul>
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <li key={item.to}>
                 <NavLink
                   to={item.to}
@@ -56,13 +93,21 @@ interface NavItem {
   readonly label: string;
   /** `end` matches the route exactly — used for the index ("/") route. */
   readonly end?: boolean;
+  /** Only show to ADMIN (cosmetic; the route's procedures enforce server-side). */
+  readonly adminOnly?: boolean;
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/merchants", label: "Merchants" },
   { to: "/inbox", label: "Inbox" },
+  { to: "/routing-rules", label: "Routing", adminOnly: true },
   { to: "/audit", label: "Audit" },
+  { to: "/compliance", label: "Compliance", adminOnly: true },
+  // Tier 3 — growth & retention.
+  { to: "/at-risk", label: "At-risk" },
+  { to: "/feature-flags", label: "Flags", adminOnly: true },
+  { to: "/announcements", label: "Announcements", adminOnly: true },
 ];
 
 /**

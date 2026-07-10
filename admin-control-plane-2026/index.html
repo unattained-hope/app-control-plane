@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apoaap Control Plane — Internal Multi-App Admin for Shopify Apps · Stack & Architecture Report</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#121723; --panel-2:#161c2b; --ink:#e6e9ef; --ink-dim:#9aa4b8;
+    --line:#232b3d; --line-2:#2c3650; --brand:#6d7cff; --brand-2:#8a6dff; --accent:#39d0a8;
+    --warn:#ffb454; --danger:#ff6b6b; --ok:#39d0a8; --judge:#5bb6ff; --refute:#ff8fa3;
+    --chip:#1c2436; --radius:14px; --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0b0e14,#0c1019 40%,#0b0e14);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+  a{color:var(--brand);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1500px;margin:0 auto;gap:0}
+  /* Sidebar */
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:28px 18px 60px;border-right:1px solid var(--line);background:rgba(10,13,20,.6);backdrop-filter:blur(6px)}
+  nav.toc .brand{font-weight:800;font-size:15px;letter-spacing:.3px;color:#fff;margin-bottom:2px}
+  nav.toc .brand span{color:var(--brand)}
+  nav.toc .sub{font-size:11.5px;color:var(--ink-dim);margin-bottom:22px;line-height:1.4}
+  nav.toc a{display:block;color:var(--ink-dim);font-size:13px;padding:5px 10px;border-radius:8px;border-left:2px solid transparent;margin:1px 0}
+  nav.toc a:hover{color:var(--ink);background:var(--panel);text-decoration:none}
+  nav.toc a.sec{margin-top:14px;color:#cdd4e4;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.6px}
+  nav.toc a.num::before{content:attr(data-n);color:var(--brand);font-family:var(--mono);font-size:11px;margin-right:8px;opacity:.8}
+  main{padding:46px 52px 120px;min-width:0}
+  /* Hero */
+  .hero{border:1px solid var(--line);background:radial-gradient(1200px 400px at 0% -10%,rgba(109,124,255,.16),transparent),var(--panel);border-radius:var(--radius);padding:34px 36px;margin-bottom:30px}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--brand);margin:0 0 12px}
+  h1{font-size:32px;line-height:1.18;margin:0 0 14px;letter-spacing:-.6px;color:#fff}
+  .hero p.lede{font-size:16px;color:var(--ink-dim);margin:0 0 18px;max-width:80ch}
+  .meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .pill{font-family:var(--mono);font-size:11.5px;background:var(--chip);border:1px solid var(--line-2);color:var(--ink-dim);padding:4px 10px;border-radius:20px}
+  .pill b{color:var(--ink)}
+  /* Headings */
+  h2{font-size:23px;margin:54px 0 6px;letter-spacing:-.3px;color:#fff;scroll-margin-top:20px;display:flex;align-items:baseline;gap:12px}
+  h2 .h2n{font-family:var(--mono);font-size:14px;color:var(--brand);font-weight:600}
+  h2+.dek{color:var(--ink-dim);margin:0 0 22px;font-size:14.5px}
+  h3{font-size:17px;margin:30px 0 8px;color:#eef1f7}
+  h4{font-size:14px;margin:20px 0 6px;color:#cdd4e4;text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0;padding-left:22px}
+  li{margin:5px 0}
+  hr{border:none;border-top:1px solid var(--line);margin:40px 0}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line);padding:1.5px 6px;border-radius:6px;color:#cfe3ff}
+  /* Badges */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;letter-spacing:.4px;vertical-align:middle;white-space:nowrap}
+  .b-ver{background:rgba(57,208,168,.13);color:var(--ok);border:1px solid rgba(57,208,168,.35)}
+  .b-judge{background:rgba(91,182,255,.12);color:var(--judge);border:1px solid rgba(91,182,255,.32)}
+  .b-refute{background:rgba(255,143,163,.12);color:var(--refute);border:1px solid rgba(255,143,163,.35)}
+  .b-warn{background:rgba(255,180,84,.12);color:var(--warn);border:1px solid rgba(255,180,84,.32)}
+  /* Callouts */
+  .call{border:1px solid var(--line);border-left:3px solid var(--brand);background:var(--panel);border-radius:10px;padding:16px 20px;margin:18px 0}
+  .call.rec{border-left-color:var(--accent);background:linear-gradient(90deg,rgba(57,208,168,.06),transparent 60%),var(--panel)}
+  .call.warn{border-left-color:var(--warn);background:linear-gradient(90deg,rgba(255,180,84,.06),transparent 60%),var(--panel)}
+  .call.danger{border-left-color:var(--danger);background:linear-gradient(90deg,rgba(255,107,107,.06),transparent 60%),var(--panel)}
+  .call .ct{font-weight:700;font-size:13px;letter-spacing:.4px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .call.rec .ct{color:var(--accent)} .call.warn .ct{color:var(--warn)} .call.danger .ct{color:var(--danger)} .call .ct{color:var(--brand)}
+  .call p:first-of-type{margin-top:0} .call p:last-child{margin-bottom:0}
+  /* Tables */
+  .tw{overflow-x:auto;margin:18px 0;border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  thead th{background:var(--panel-2);color:#cdd4e4;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono);position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(109,124,255,.04)}
+  td.pick{color:#fff;font-weight:600}
+  .win{color:var(--accent);font-weight:700}
+  .tag{font-family:var(--mono);font-size:10.5px;padding:1px 7px;border-radius:6px;border:1px solid var(--line-2);background:var(--chip);color:var(--ink-dim);white-space:nowrap}
+  .star{color:var(--warn)}
+  /* Stack cards */
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+  .card{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:16px 18px}
+  .card h5{margin:0 0 3px;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-dim);font-family:var(--mono)}
+  .card .pickname{font-size:17px;font-weight:700;color:#fff;margin:2px 0 8px}
+  .card p{font-size:13px;color:var(--ink-dim);margin:6px 0 0}
+  .card .alt{font-size:11.5px;color:var(--ink-dim);margin-top:8px;font-family:var(--mono)}
+  .card .alt b{color:#aab4cc}
+  /* Diagram */
+  .diagram{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:22px;margin:20px 0;overflow-x:auto}
+  .diagram svg{display:block;margin:0 auto;min-width:680px}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--ink-dim);margin-top:12px;justify-content:center}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .swatch{width:12px;height:12px;border-radius:3px;display:inline-block}
+  /* Backlog */
+  .lane{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+  .lane .lh{padding:12px 16px;font-weight:700;font-size:13px;letter-spacing:.4px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+  .lane.mvp .lh{background:linear-gradient(90deg,rgba(57,208,168,.16),transparent);color:var(--accent);border-bottom:1px solid var(--line)}
+  .lane.v1 .lh{background:linear-gradient(90deg,rgba(109,124,255,.16),transparent);color:var(--brand);border-bottom:1px solid var(--line)}
+  .lane.later .lh{background:linear-gradient(90deg,rgba(255,180,84,.14),transparent);color:var(--warn);border-bottom:1px solid var(--line)}
+  .lane ul{margin:0;padding:12px 16px 14px 30px}
+  .lane li{font-size:13.5px;margin:7px 0}
+  /* Roadmap */
+  .road{position:relative;margin:24px 0 10px;padding-left:26px}
+  .road::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--accent),var(--brand),var(--brand-2),var(--warn))}
+  .phase{position:relative;margin:0 0 22px;padding:2px 0 2px 8px}
+  .phase::before{content:"";position:absolute;left:-23px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--brand)}
+  .phase.p0::before{border-color:var(--accent)} .phase.p3::before{border-color:var(--warn)}
+  .phase .pt{font-weight:700;color:#fff;font-size:15px}
+  .phase .pw{font-family:var(--mono);font-size:11px;color:var(--brand);text-transform:uppercase;letter-spacing:.6px;margin-left:8px}
+  .phase p{margin:4px 0 0;font-size:13.5px;color:var(--ink-dim)}
+  /* Source list */
+  ol.src{font-size:12.5px;color:var(--ink-dim);padding-left:26px}
+  ol.src li{margin:7px 0;word-break:break-word}
+  ol.src .q{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid var(--line-2);margin-left:6px}
+  .q.primary{color:var(--ok);border-color:rgba(57,208,168,.4)} .q.secondary{color:var(--judge);border-color:rgba(91,182,255,.4)} .q.blog{color:var(--ink-dim)} .q.forum{color:var(--warn);border-color:rgba(255,180,84,.4)}
+  sup.c{font-family:var(--mono);font-size:10px;color:var(--brand);font-weight:700;cursor:pointer;padding:0 1px}
+  /* Footnote / methodology */
+  .methbar{display:flex;flex-wrap:wrap;gap:18px;border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:14px 18px;margin:16px 0;font-size:12.5px;color:var(--ink-dim)}
+  .methbar b{color:#fff;font-family:var(--mono)}
+  .keyline{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}
+  .keyline .badge{font-size:11px}
+  details{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:12px 0;padding:0 16px}
+  summary{cursor:pointer;padding:13px 0;font-weight:600;color:#dfe4f0;font-size:14px}
+  details[open]{padding-bottom:14px}
+  .tiny{font-size:12px;color:var(--ink-dim)}
+  @media(max-width:1080px){.wrap{grid-template-columns:1fr}nav.toc{display:none}main{padding:30px 22px 90px}.g4,.g3,.g2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ============ SIDEBAR ============ -->
+<nav class="toc">
+  <div class="brand">Apoaap <span>Control Plane</span></div>
+  <div class="sub">Internal multi-app admin for a portfolio of Shopify apps · Stack &amp; architecture report</div>
+  <a class="sec">Decision</a>
+  <a class="num" data-n="00" href="#tldr">TL;DR &amp; reference stack</a>
+  <a class="num" data-n="01" href="#context">Context &amp; constraints</a>
+  <a class="num" data-n="02" href="#arch">Architecture overview</a>
+  <a class="sec">Stack</a>
+  <a class="num" data-n="03" href="#framework">Framework decision</a>
+  <a class="num" data-n="04" href="#bom">Component bill of materials</a>
+  <a class="sec">Subsystems</a>
+  <a class="num" data-n="05" href="#data">Shared-DB connector</a>
+  <a class="num" data-n="06" href="#chat">In-house support chat</a>
+  <a class="num" data-n="07" href="#controlplane">Multi-app control plane</a>
+  <a class="num" data-n="08" href="#shopify">Shopify billing &amp; GDPR</a>
+  <a class="num" data-n="09" href="#safety">Audit &amp; action safety</a>
+  <a class="num" data-n="10" href="#analytics">Analytics architecture</a>
+  <a class="num" data-n="11" href="#hosting">Hosting &amp; auth</a>
+  <a class="sec">Plan</a>
+  <a class="num" data-n="12" href="#features">Extra high-value features</a>
+  <a class="num" data-n="13" href="#backlog">Feature backlog</a>
+  <a class="num" data-n="14" href="#roadmap">Phased roadmap</a>
+  <a class="sec">Appendix</a>
+  <a class="num" data-n="15" href="#risks">Risks &amp; open questions</a>
+  <a class="num" data-n="16" href="#sources">Sources</a>
+</nav>
+
+<!-- ============ MAIN ============ -->
+<main>
+
+<section class="hero" id="top">
+  <p class="kicker">Engineering Decision Report</p>
+  <h1>An internal control plane to administer your Shopify app portfolio</h1>
+  <p class="lede">A concrete, opinionated reference architecture for one admin app that manages <b>SaleSwitch today and many apps tomorrow</b> — merchant management, an in-house support inbox, subscriptions, and per-app analytics — built on a shared-DB read model with a per-app plugin/connector seam.</p>
+  <div class="meta-row">
+    <span class="pill">Prepared <b>2026-06-22</b></span>
+    <span class="pill">Audience <b>Founders · Eng · Support</b></span>
+    <span class="pill">First tenant <b>SaleSwitch</b></span>
+    <span class="pill">Evidence <b>24/25 claims verified</b></span>
+    <span class="pill">Sources <b>30 fetched · primary-weighted</b></span>
+  </div>
+</section>
+
+<div class="keyline">
+  <span class="badge b-ver">✓ VERIFIED — cited primary source</span>
+  <span class="badge b-judge">◆ ENGINEERING JUDGMENT — reasoned, not independently sourced</span>
+  <span class="badge b-refute">✗ CORRECTION — a tempting assumption that the evidence refuted</span>
+</div>
+<p class="tiny">This report is deliberately honest about what is <em>fact</em> vs. what is <em>opinion</em>. The deep-research pass strongly verified the load-bearing infrastructure decisions (Prisma multi-DB, Shopify CSP/billing/GDPR rules, control-plane theory, auth pricing, Chatwoot). Several sub-choices it could <em>not</em> source — UI library, realtime transport, hosting platform, observability, analytics-at-scale, RBAC/audit design — are marked <span class="badge b-judge">◆</span> and represent considered engineering recommendation, not citation-backed fact.</p>
+
+<!-- ============ 00 TL;DR ============ -->
+<h2 id="tldr"><span class="h2n">00</span> TL;DR &amp; recommended reference stack</h2>
+<p class="dek">If you read nothing else: build a persistent (non-serverless) TypeScript app, read each app's Postgres through a per-app read-replica connector, and base the support inbox on Chatwoot rather than inventing one.</p>
+
+<div class="call rec">
+  <div class="ct">★ The one-paragraph verdict</div>
+  <p>Build the control plane as a <b>persistent-server, full-stack TypeScript app</b> — <b>React Router 7 + tRPC + Prisma + Postgres</b> (the T3 composition, but on the router your team already knows) — with a <b>per-app connector layer</b> that holds one long-lived Prisma client per app database, each pointed at a <b>read-replica</b> via Prisma's official read-replicas extension <sup class="c">3,4</sup>. Wrap the merchant/subscription/analytics surfaces in a <b>plugin/module registry</b> so each new app "plugs in" its data source + screens. For support, <b>base the inbox on Chatwoot (MIT)</b> rather than building from zero <sup class="c">5</sup>, and ship a thin embeddable widget that respects Shopify's per-shop CSP <code>frame-ancestors</code> rules <sup class="c">6</sup>. Authenticate the internal team with <b>WorkOS AuthKit</b> (free under your scale) behind a <b>zero-trust gateway</b> <sup class="c">7</sup>. Do <b>not</b> deploy this to Vercel/serverless — the WebSocket inbox, multi-DB connection pools, and BullMQ workers all want a long-running process.</p>
+</div>
+
+<h3>Reference stack at a glance</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Layer</th><th>Primary pick</th><th>Why / confidence</th><th>Credible alternative</th></tr></thead>
+<tbody>
+  <tr><td>App framework</td><td class="pick">React Router 7 (framework mode)</td><td>Reuse 100% of the team's existing skill (Badgy/SaleSwitch already ship it); SSR + nested routes + actions/loaders fit an admin. <span class="badge b-judge">◆</span></td><td>Next.js App Router (if you want the broadest ecosystem / Vercel-native)</td></tr>
+  <tr><td>API layer</td><td class="pick">tRPC</td><td>End-to-end type safety for a single first-party client — "GraphQL without the boilerplate." <span class="badge b-ver">✓</span><sup class="c">1</sup></td><td>REST + Zod (if you want HTTP-cacheable, language-agnostic endpoints)</td></tr>
+  <tr><td>ORM / data</td><td class="pick">Prisma 6 + PostgreSQL</td><td>Already standard across your apps; official multi-DB + read-replica story. <span class="badge b-ver">✓</span><sup class="c">3,4</sup></td><td>Drizzle (lighter, SQL-first) — but breaks stack consistency</td></tr>
+  <tr><td>UI components</td><td class="pick">shadcn/ui (Radix + Tailwind)</td><td>Own the code, no Polaris constraint internally, pairs with TanStack Table + Tremor. <span class="badge b-judge">◆</span></td><td>Mantine (batteries-included, great hooks) · Ant Design (densest data grids)</td></tr>
+  <tr><td>Tables / data grid</td><td class="pick">TanStack Table v8 + TanStack Query</td><td>Headless, virtualizable, sorts/filters huge merchant lists. <span class="badge b-judge">◆</span></td><td>AG Grid (enterprise grid features) · Ant Design Table</td></tr>
+  <tr><td>Charts</td><td class="pick">Tremor (or Recharts)</td><td>Tailwind-native dashboard blocks; drop-in KPI/area/bar cards. <span class="badge b-judge">◆</span></td><td>ECharts / visx for heavy custom viz</td></tr>
+  <tr><td>Auth (internal SSO)</td><td class="pick">WorkOS AuthKit</td><td>Free under 1M MAU; Google/Microsoft social login free; SSO ready. <span class="badge b-ver">✓</span><sup class="c">7</sup></td><td>Auth.js (self-host, free — but in maintenance mode since 9/2025) · Clerk</td></tr>
+  <tr><td>RBAC / permissions</td><td class="pick">CASL + role table in Postgres</td><td>Refine/auth providers do <b>not</b> ship finished RBAC. <span class="badge b-refute">✗</span><sup class="c">2</sup> Own a small policy layer. <span class="badge b-judge">◆</span></td><td>Oso / OpenFGA (if relationship-based authz grows complex)</td></tr>
+  <tr><td>Realtime (chat)</td><td class="pick">Socket.IO + Redis adapter</td><td>You already run Node + Redis; horizontal-scalable, presence/typing built-in. <span class="badge b-judge">◆</span></td><td>Ably / Pusher (managed, no ops) · SSE (one-way only — insufficient)</td></tr>
+  <tr><td>Background jobs</td><td class="pick">BullMQ + Redis</td><td>Reuse the exact queue stack your apps run today. <span class="badge b-judge">◆</span></td><td>Graphile Worker (Postgres-only, no Redis)</td></tr>
+  <tr><td>Support inbox base</td><td class="pick">Chatwoot (MIT, self-host)</td><td>Auto-assignment, teams, private notes, labels, canned replies, CSAT — don't reinvent. <span class="badge b-ver">✓</span><sup class="c">5</sup></td><td>Custom inbox using Chatwoot's data model as the reference</td></tr>
+  <tr><td>Observability</td><td class="pick">Sentry (errors + tracing)</td><td>Fastest path to error/trace visibility across app + workers. <span class="badge b-judge">◆</span></td><td>OpenTelemetry → Grafana/Tempo (vendor-neutral, more setup)</td></tr>
+  <tr><td>Analytics store</td><td class="pick">Postgres now → ClickHouse/Tinybird later</td><td>Postgres + materialized views is plenty until event volume forces a columnar store. <span class="badge b-judge">◆</span><sup class="c">—</sup></td><td>TimescaleDB (Postgres extension, middle ground)</td></tr>
+  <tr><td>Hosting</td><td class="pick">Containers on Fly.io / Hetzner / ECS-Fargate</td><td>Persistent process for WS + pools + workers; co-locate near app DBs. <span class="badge b-judge">◆</span></td><td>Render / Railway (managed PaaS, less ops) — <b>not</b> Vercel serverless</td></tr>
+  <tr><td>Access control</td><td class="pick">Cloudflare Access / Tailscale (zero-trust)</td><td>Internal-only tool should not sit on the open internet. <span class="badge b-judge">◆</span></td><td>VPN + IP allowlist</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="methbar">
+  <span><b>Research method:</b> deep-research harness</span>
+  <span>6 search angles</span>
+  <span>30 sources fetched</span>
+  <span>140 claims extracted</span>
+  <span>25 adversarially verified (3-vote)</span>
+  <span><b>24</b> confirmed · <b>1</b> refuted</span>
+  <span>113 agents · ~3.1M tokens</span>
+</div>
+
+<!-- ============ 01 CONTEXT ============ -->
+<h2 id="context"><span class="h2n">01</span> Context &amp; constraints</h2>
+<p class="dek">The four stakeholder decisions this report is built around.</p>
+<div class="grid g2">
+  <div class="card"><h5>Purpose</h5><div class="pickname">One app, many apps</div><p>A single internal admin to administer the whole Shopify-app portfolio. <b>SaleSwitch</b> is tenant #1; the top-bar app-selector switches context, and each app may expose different modules, analytics, and pages. Build for one, design for many.</p></div>
+  <div class="card"><h5>Decision · Stack</h5><div class="pickname">Best-in-class, open</div><p>Pick the strongest stack for an internal control plane — not constrained to current choices, but free to reuse the team's React Router 7 / Node / Prisma / Postgres / BullMQ muscle memory where it's genuinely best.</p></div>
+  <div class="card"><h5>Decision · Data</h5><div class="pickname">Shared DB / direct read</div><p>The admin app reads each app's Postgres directly (shared or replica). Must stay safe as apps multiply — bounded connections, least-privilege, and a clean exit toward decoupling later.</p></div>
+  <div class="card"><h5>Decision · Support</h5><div class="pickname">Build in-house</div><p>An embeddable chat widget inside each Shopify app, with conversations surfacing in a support inbox in the admin app. Owns its data and branding.</p></div>
+</div>
+<div class="call">
+  <div class="ct">◆ A reframing worth internalizing <span class="badge b-ver">✓</span><sup class="c">8</sup></div>
+  <p>Microsoft's multitenancy guidance is blunt: <em>"A control plane functions as an application. You must design your control plane with the same rigor and care that you apply to other parts of your solution."</em> This is not a side dashboard — it is a product, with its own SLA, auth, audit, and tests. It also warns that a <b>manual/spreadsheet catalog only works below ~10 tenants</b>, with the automate-now threshold "typically between 5 and 10." You're at 1 app, so a lightweight registry is fine today — but bake in the seam now so app #5 doesn't force a rewrite.</p>
+</div>
+
+<!-- ============ 02 ARCHITECTURE ============ -->
+<h2 id="arch"><span class="h2n">02</span> Architecture overview</h2>
+<p class="dek">A control-plane core, a per-app connector/plugin seam, and an in-house chat subsystem — all reading from app read-replicas, never their primaries.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 900 540" width="900" height="540" font-family="Inter,sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6 z" fill="#6d7cff"/></marker>
+    <marker id="arr2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6 z" fill="#39d0a8"/></marker>
+  </defs>
+  <!-- users -->
+  <rect x="20" y="20" width="180" height="70" rx="10" fill="#161c2b" stroke="#2c3650"/>
+  <text x="110" y="48" fill="#fff" font-size="13" font-weight="700" text-anchor="middle">Internal team</text>
+  <text x="110" y="68" fill="#9aa4b8" font-size="11" text-anchor="middle">support · admin · founders</text>
+
+  <!-- zero trust -->
+  <rect x="20" y="120" width="180" height="56" rx="10" fill="#11261f" stroke="#39d0a8"/>
+  <text x="110" y="143" fill="#39d0a8" font-size="12" font-weight="700" text-anchor="middle">Zero-trust gateway</text>
+  <text x="110" y="161" fill="#9aa4b8" font-size="10" text-anchor="middle">Cloudflare Access + WorkOS SSO</text>
+
+  <!-- control plane core -->
+  <rect x="250" y="20" width="380" height="290" rx="14" fill="#121723" stroke="#3a4566"/>
+  <text x="270" y="46" fill="#6d7cff" font-size="12" font-weight="700">CONTROL PLANE  (React Router 7 · tRPC · Prisma)</text>
+
+  <rect x="270" y="62" width="160" height="48" rx="8" fill="#1c2436" stroke="#2c3650"/>
+  <text x="350" y="83" fill="#e6e9ef" font-size="11.5" text-anchor="middle" font-weight="600">App registry</text>
+  <text x="350" y="99" fill="#9aa4b8" font-size="9.5" text-anchor="middle">tenant catalog · modules</text>
+
+  <rect x="450" y="62" width="160" height="48" rx="8" fill="#1c2436" stroke="#2c3650"/>
+  <text x="530" y="83" fill="#e6e9ef" font-size="11.5" text-anchor="middle" font-weight="600">RBAC + Audit</text>
+  <text x="530" y="99" fill="#9aa4b8" font-size="9.5" text-anchor="middle">CASL · action log</text>
+
+  <rect x="270" y="124" width="160" height="48" rx="8" fill="#1c2436" stroke="#2c3650"/>
+  <text x="350" y="145" fill="#e6e9ef" font-size="11.5" text-anchor="middle" font-weight="600">Merchant mgmt</text>
+  <text x="350" y="161" fill="#9aa4b8" font-size="9.5" text-anchor="middle">list · actions · health</text>
+
+  <rect x="450" y="124" width="160" height="48" rx="8" fill="#1c2436" stroke="#2c3650"/>
+  <text x="530" y="145" fill="#e6e9ef" font-size="11.5" text-anchor="middle" font-weight="600">Billing / subs</text>
+  <text x="530" y="161" fill="#9aa4b8" font-size="9.5" text-anchor="middle">reads Shopify state</text>
+
+  <rect x="270" y="186" width="160" height="48" rx="8" fill="#1c2436" stroke="#2c3650"/>
+  <text x="350" y="207" fill="#e6e9ef" font-size="11.5" text-anchor="middle" font-weight="600">Analytics</text>
+  <text x="350" y="223" fill="#9aa4b8" font-size="9.5" text-anchor="middle">per-app dashboards</text>
+
+  <rect x="450" y="186" width="160" height="48" rx="8" fill="#11261f" stroke="#39d0a8"/>
+  <text x="530" y="207" fill="#39d0a8" font-size="11.5" text-anchor="middle" font-weight="600">Support inbox</text>
+  <text x="530" y="223" fill="#9aa4b8" font-size="9.5" text-anchor="middle">Chatwoot-based</text>
+
+  <!-- connector seam -->
+  <rect x="270" y="250" width="340" height="46" rx="8" fill="#1a1730" stroke="#8a6dff"/>
+  <text x="440" y="270" fill="#b9a9ff" font-size="11.5" text-anchor="middle" font-weight="700">PER-APP CONNECTOR / PLUGIN SEAM</text>
+  <text x="440" y="286" fill="#9aa4b8" font-size="9.5" text-anchor="middle">one read-only Prisma client + module set per app</text>
+
+  <!-- redis / bullmq -->
+  <rect x="250" y="330" width="180" height="56" rx="10" fill="#161c2b" stroke="#2c3650"/>
+  <text x="340" y="353" fill="#fff" font-size="12" font-weight="700" text-anchor="middle">Redis</text>
+  <text x="340" y="371" fill="#9aa4b8" font-size="10" text-anchor="middle">BullMQ jobs · Socket.IO adapter</text>
+
+  <!-- realtime -->
+  <rect x="450" y="330" width="180" height="56" rx="10" fill="#11261f" stroke="#39d0a8"/>
+  <text x="540" y="353" fill="#39d0a8" font-size="12" font-weight="700" text-anchor="middle">Realtime (Socket.IO)</text>
+  <text x="540" y="371" fill="#9aa4b8" font-size="10" text-anchor="middle">presence · typing · unread</text>
+
+  <!-- app DBs -->
+  <text x="780" y="40" fill="#9aa4b8" font-size="11" text-anchor="middle" font-weight="700">APP DATA SOURCES</text>
+  <rect x="690" y="56" width="180" height="60" rx="10" fill="#161c2b" stroke="#39d0a8"/>
+  <text x="780" y="80" fill="#fff" font-size="12" text-anchor="middle" font-weight="700">SaleSwitch DB</text>
+  <text x="780" y="98" fill="#39d0a8" font-size="10" text-anchor="middle">read-replica (read-only role)</text>
+
+  <rect x="690" y="128" width="180" height="60" rx="10" fill="#161c2b" stroke="#2c3650" stroke-dasharray="4 3"/>
+  <text x="780" y="152" fill="#cdd4e4" font-size="12" text-anchor="middle" font-weight="700">App #2 DB</text>
+  <text x="780" y="170" fill="#9aa4b8" font-size="10" text-anchor="middle">future · same connector contract</text>
+
+  <rect x="690" y="200" width="180" height="60" rx="10" fill="#161c2b" stroke="#2c3650" stroke-dasharray="4 3"/>
+  <text x="780" y="224" fill="#cdd4e4" font-size="12" text-anchor="middle" font-weight="700">App #N DB</text>
+  <text x="780" y="242" fill="#9aa4b8" font-size="10" text-anchor="middle">…</text>
+
+  <!-- Shopify + widget -->
+  <rect x="690" y="300" width="180" height="86" rx="10" fill="#1a1422" stroke="#a06bd6"/>
+  <text x="780" y="324" fill="#d6a9ff" font-size="12" text-anchor="middle" font-weight="700">Shopify</text>
+  <text x="780" y="343" fill="#9aa4b8" font-size="10" text-anchor="middle">Billing API · GDPR webhooks</text>
+  <text x="780" y="360" fill="#9aa4b8" font-size="10" text-anchor="middle">embedded app (App Bridge)</text>
+  <text x="780" y="377" fill="#9aa4b8" font-size="10" text-anchor="middle">+ chat widget (iframe/CSP)</text>
+
+  <!-- arrows -->
+  <line x1="110" y1="90" x2="110" y2="118" stroke="#39d0a8" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="200" y1="148" x2="248" y2="148" stroke="#39d0a8" stroke-width="2" marker-end="url(#arr2)"/>
+  <line x1="610" y1="273" x2="688" y2="86" stroke="#8a6dff" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="610" y1="273" x2="688" y2="158" stroke="#8a6dff" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+  <line x1="610" y1="273" x2="688" y2="230" stroke="#8a6dff" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+  <line x1="630" y1="210" x2="688" y2="330" stroke="#a06bd6" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="690" y1="350" x2="632" y2="350" stroke="#39d0a8" stroke-width="2" marker-end="url(#arr2)"/>
+  <text x="648" y="200" fill="#8a6dff" font-size="9" transform="rotate(-38 648 200)">read-only</text>
+  <text x="600" y="345" fill="#39d0a8" font-size="9">WS in</text>
+
+  <!-- caption boxes -->
+  <rect x="20" y="220" width="180" height="160" rx="10" fill="#0f1420" stroke="#232b3d"/>
+  <text x="30" y="244" fill="#cdd4e4" font-size="11" font-weight="700">Hard rules</text>
+  <text x="30" y="266" fill="#9aa4b8" font-size="9.7">• read replicas only</text>
+  <text x="30" y="284" fill="#9aa4b8" font-size="9.7">• least-privilege DB role</text>
+  <text x="30" y="302" fill="#9aa4b8" font-size="9.7">• never co-locate enc keys</text>
+  <text x="30" y="320" fill="#9aa4b8" font-size="9.7">• every action audited</text>
+  <text x="30" y="338" fill="#9aa4b8" font-size="9.7">• persistent server (no</text>
+  <text x="30" y="352" fill="#9aa4b8" font-size="9.7">&nbsp;&nbsp;serverless) for WS+pools</text>
+  <text x="30" y="372" fill="#9aa4b8" font-size="9.7">• bounded client count</text>
+</svg>
+<div class="legend">
+  <span><span class="swatch" style="background:#6d7cff"></span>Control-plane core</span>
+  <span><span class="swatch" style="background:#8a6dff"></span>Connector / plugin seam</span>
+  <span><span class="swatch" style="background:#39d0a8"></span>Realtime + read path</span>
+  <span><span class="swatch" style="background:#a06bd6"></span>Shopify integration</span>
+</div>
+</div>
+
+<p>The whole design hinges on one seam: the <b>per-app connector</b>. Each app contributes (a) a read-only Prisma client to its replica, and (b) a set of UI modules + analytics queries. The control-plane core is app-agnostic; the top-bar selector simply swaps which connector is active. This is the practical implementation of the "tenant catalog + deployment stamps" idea from control-plane theory <sup class="c">8</sup>.</p>
+
+<!-- ============ 03 FRAMEWORK ============ -->
+<h2 id="framework"><span class="h2n">03</span> Framework decision</h2>
+<p class="dek">"Best-in-class" here means: type-safe, persistent-server, and aligned with skills you already have — with admin-framework accelerators considered and rejected as the <em>foundation</em>.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Option</th><th>What it is</th><th>Fit for this control plane</th><th>Verdict</th></tr></thead>
+<tbody>
+  <tr>
+    <td class="pick">React Router 7 (framework mode) + tRPC</td>
+    <td>Remix-lineage SSR router your team already ships in Badgy/SaleSwitch, plus type-safe RPC.</td>
+    <td>Zero ramp; loaders/actions map cleanly to admin pages; persistent Node server hosts WebSockets, multi-DB pools, and BullMQ workers in one process.</td>
+    <td class="win">RECOMMENDED</td></tr>
+  <tr>
+    <td class="pick">Next.js (App Router) + tRPC (T3)</td>
+    <td>The canonical typesafe full-stack starter: Next + tRPC + Prisma + Auth.js. <span class="badge b-ver">✓</span><sup class="c">1</sup></td>
+    <td>Excellent and the most documented path; tRPC is "GraphQL without the boilerplate" for a single first-party client. But serverless-first defaults fight long-lived WS + DB pools; you'd run it as a persistent Node server anyway.</td>
+    <td>Strong alt</td></tr>
+  <tr>
+    <td>Refine (meta-framework)</td>
+    <td>Headless React framework purpose-built for CRUD-heavy admin/internal tools; library-agnostic UI. <span class="badge b-ver">✓</span><sup class="c">2</sup></td>
+    <td>Great accelerator for the listing/CRUD surfaces. <b>But</b> its resource model is weak for non-CRUD subsystems (realtime chat, plugin registry, cross-DB connectors), and its auth/RBAC/audit/realtime "providers" are interfaces you must wire — <span class="badge b-refute">✗</span> they are <b>not</b> finished features. <sup class="c">2</sup></td>
+    <td>Optional accelerator, not the base</td></tr>
+  <tr>
+    <td>React-Admin / AdminJS</td>
+    <td>Mature data-driven admin UIs auto-generated from resources/models.</td>
+    <td>Fastest to a CRUD grid, but opinionated UIs constrain the bespoke inbox + multi-app theming you want; harder to escape the resource abstraction.</td>
+    <td>Pass</td></tr>
+  <tr>
+    <td>Retool (low-code)</td>
+    <td>Drag-and-drop internal-tool builder over your DBs/APIs.</td>
+    <td>Superb for throwaway ops dashboards. Poor fit as the <em>product</em> here: you need a custom realtime inbox, embeddable widget, and a plugin system — all awkward or impossible in low-code, plus per-seat cost and lock-in.</td>
+    <td>Pass (use for ad-hoc ops only)</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="call rec">
+  <div class="ct">★ Recommendation</div>
+  <p><b>React Router 7 framework-mode + tRPC + Prisma</b> as the foundation. The research validates the T3 composition (Next+tRPC+Prisma+Auth.js) as the strongest typesafe baseline <sup class="c">1</sup> — adopt its <em>shape</em> (typesafe RPC, Prisma, Auth) but keep the <em>router</em> your team is already fluent in. Then optionally pull <b>Refine</b> in for the boilerplate-heavy CRUD tables only (it's UI-library-agnostic, so it composes with shadcn/ui), while keeping the inbox, registry, and connectors as first-class custom code. Do not let an adoption decision rest on Refine "giving you RBAC/audit/realtime for free" — <span class="badge b-refute">it does not</span>.<sup class="c">2</sup></p>
+</div>
+
+<p class="tiny"><b>Auth.js caveat:</b> the T3 default auth (Auth.js / NextAuth v5) entered <b>maintenance mode in Sept 2025</b>. It remains the free self-hosted option, but for a brand-new internal tool prefer an actively-developed provider — see §11.</p>
+
+<!-- ============ 04 BOM ============ -->
+<h2 id="bom"><span class="h2n">04</span> Component bill of materials</h2>
+<p class="dek">Each pick with its rationale and the alternative you'd reach for under different constraints. Verified picks carry a citation; everything else is engineering judgment.</p>
+
+<div class="grid g3">
+  <div class="card"><h5>UI components <span class="badge b-judge">◆</span></h5><div class="pickname">shadcn/ui</div><p>Copy-in Radix + Tailwind components you own outright — no runtime dep, full restyle freedom for per-app theming.</p><div class="alt"><b>Alt:</b> Mantine (richest hooks) · Ant Design (densest grids) · MUI (most mature)</div></div>
+  <div class="card"><h5>Data grid <span class="badge b-judge">◆</span></h5><div class="pickname">TanStack Table v8</div><p>Headless, column virtualization, server-side sort/filter/paginate — ideal for large merchant lists.</p><div class="alt"><b>Alt:</b> AG Grid (enterprise) · AntD Table (batteries-in)</div></div>
+  <div class="card"><h5>Server state <span class="badge b-judge">◆</span></h5><div class="pickname">TanStack Query</div><p>Caching, background refetch, optimistic updates — pairs natively with tRPC.</p><div class="alt"><b>Alt:</b> SWR · RR7 loaders alone for simple pages</div></div>
+  <div class="card"><h5>Charts <span class="badge b-judge">◆</span></h5><div class="pickname">Tremor</div><p>Tailwind-native KPI/area/bar/donut blocks; assemble dashboards fast on top of Recharts.</p><div class="alt"><b>Alt:</b> Recharts (lower-level) · ECharts/visx (heavy custom)</div></div>
+  <div class="card"><h5>API layer <span class="badge b-ver">✓</span><sup class="c">1</sup></h5><div class="pickname">tRPC</div><p>Type-safe client↔server with no schema duplication. Right when there's one trusted client.</p><div class="alt"><b>Alt:</b> REST+Zod for webhooks/3rd-party; GraphQL only if many clients</div></div>
+  <div class="card"><h5>ORM <span class="badge b-ver">✓</span><sup class="c">3</sup></h5><div class="pickname">Prisma 6</div><p>Multi-DB + read-replica story is officially documented (see §5).</p><div class="alt"><b>Alt:</b> Drizzle (SQL-first, lighter) — at the cost of stack consistency</div></div>
+  <div class="card"><h5>Auth <span class="badge b-ver">✓</span><sup class="c">7</sup></h5><div class="pickname">WorkOS AuthKit</div><p>Free under 1M MAU; Google/Microsoft social login free; SSO/MFA/passkeys ready.</p><div class="alt"><b>Alt:</b> Auth.js (free self-host, maintenance mode) · Clerk (polished, paid)</div></div>
+  <div class="card"><h5>RBAC <span class="badge b-judge">◆</span></h5><div class="pickname">CASL</div><p>Define abilities (roles × actions × resources) in one place; enforce in tRPC middleware. Persist roles in Postgres.</p><div class="alt"><b>Alt:</b> OpenFGA / Oso for relationship-based authz at scale</div></div>
+  <div class="card"><h5>Realtime <span class="badge b-judge">◆</span></h5><div class="pickname">Socket.IO + Redis</div><p>Bi-directional, presence/rooms built-in, horizontally scalable via the Redis adapter you already run.</p><div class="alt"><b>Alt:</b> Ably/Pusher (managed) · SSE (one-way, insufficient for chat)</div></div>
+  <div class="card"><h5>Jobs <span class="badge b-judge">◆</span></h5><div class="pickname">BullMQ</div><p>Reuse the exact queue your apps run: webhook ingestion, analytics rollups, replication-lag-tolerant syncs.</p><div class="alt"><b>Alt:</b> Graphile Worker (Postgres, no Redis)</div></div>
+  <div class="card"><h5>Cache <span class="badge b-judge">◆</span></h5><div class="pickname">Redis</div><p>Session store, rate limits, hot KPI cache, Socket.IO pub/sub, BullMQ backing — one box, many jobs.</p><div class="alt"><b>Alt:</b> Valkey (drop-in OSS fork)</div></div>
+  <div class="card"><h5>Observability <span class="badge b-judge">◆</span></h5><div class="pickname">Sentry</div><p>Errors + performance traces across app and workers, fastest to value; alerts to Slack.</p><div class="alt"><b>Alt:</b> OpenTelemetry → Grafana/Tempo/Loki (vendor-neutral)</div></div>
+</div>
+
+<!-- ============ 05 DATA ============ -->
+<h2 id="data"><span class="h2n">05</span> Shared-DB connector design</h2>
+<p class="dek">How to read each app's Postgres directly today, safely, and keep an exit ramp toward decoupling when coupling starts to hurt.</p>
+
+<h3>The pattern: one client per app DB, each on a read-replica</h3>
+<p>Prisma's <b>officially documented</b> approach for multiple databases is a separate schema + a separate long-lived <code>PrismaClient</code> per database — explicitly endorsed "for multi-tenant applications or when you need to separate concerns when managing connections to multiple databases." <sup class="c">3</sup> A schema allows only one <code>datasource</code> block, so a single multi-datasource client is not an option. That maps exactly onto a per-app connector.</p>
+
+<div class="call">
+  <div class="ct">◆ Connector contract (sketch)</div>
+  <p>Each app registers an object implementing a shared interface — the seam that makes the control plane app-agnostic:</p>
+  <pre style="margin:8px 0 0;overflow-x:auto;font-family:var(--mono);font-size:12px;color:#cfe3ff;line-height:1.5"><code style="background:none;border:none;padding:0">interface AppConnector {
+  key: "saleswitch" | "app2" | ...;       // tenant id in the registry
+  db: PrismaClient;                         // long-lived singleton, READ-REPLICA url, read-only role
+  listMerchants(q): Promise&lt;MerchantRow[]&gt;;  // app maps its own schema → common shape
+  getMerchant(shop): Promise&lt;MerchantDetail&gt;;
+  subscriptions(shop): Promise&lt;SubState&gt;;     // see §8 — reads Shopify-owned state
+  modules: AdminModule[];                    // app-specific screens/analytics (plugin)
+}</code></pre>
+</div>
+
+<h4>Read-replica routing — official, automatic</h4>
+<p>Point each connector's client at a read-replica using Prisma's official <code>@prisma/extension-read-replicas</code>. It <b>auto-routes all reads</b> (<code>findMany</code>, etc.) to replicas and sends <b>all writes + <code>$transaction</code></b> to the primary, with optional <code>$primary()</code>/<code>$replica()</code> overrides — no manual per-query routing. <sup class="c">4</sup> This keeps the control plane's read load entirely off each app's production primary.</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Rule</th><th>Why</th><th>Confidence</th></tr></thead>
+<tbody>
+  <tr><td>One long-lived client per app DB (singleton)</td><td>Prisma-endorsed multi-tenant pattern; avoids the per-request "new client" pool-exhaustion anti-pattern.</td><td><span class="badge b-ver">✓</span><sup class="c">3</sup></td></tr>
+  <tr><td>Target a read-replica via the official extension</td><td>Reads auto-route to replica; writes/transactions to primary. Control plane never writes app DBs.</td><td><span class="badge b-ver">✓</span><sup class="c">4</sup></td></tr>
+  <tr><td>Dedicated <b>read-only</b> Postgres role per app</td><td>Least privilege — the admin credential physically cannot mutate or drop merchant data.</td><td><span class="badge b-judge">◆</span></td></tr>
+  <tr><td>Keep client count bounded; cap pool size per client</td><td>Each client holds memory + its own pool. Fine at N apps; the trigger to decouple is when N grows large.</td><td><span class="badge b-ver">✓</span><sup class="c">3</sup></td></tr>
+  <tr><td>Tolerate replication lag in the UI</td><td>Read-after-write lag means the admin sees slightly stale data — acceptable for an admin read model; surface "as of" timestamps.</td><td><span class="badge b-ver">✓</span><sup class="c">4</sup></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="call danger">
+  <div class="ct">⚠ Security: never decrypt app tokens in the control plane</div>
+  <p>SaleSwitch stores access tokens AES-256-encrypted at rest. The admin plane should <b>not</b> read or decrypt them. Two concrete hazards from the evidence: (1) Prisma <code>$queryRaw</code>/<code>$executeRaw</code> <b>default to the PRIMARY DB</b> (the extension can't infer read-vs-write intent for raw SQL) — so a raw query to "just peek" at an encrypted column bypasses your replica isolation. <sup class="c">4</sup> (2) Decryption keys must <b>never be co-located</b> with the read-only admin role. If a workflow genuinely needs a decrypted value, do it through a narrow, audited API the owning app exposes — not by reaching into its columns.</p>
+</div>
+
+<h3>Schema-coupling risk &amp; the exit ramp</h3>
+<p>Direct shared-DB reads are the right call for one app and a small portfolio. The known downside is coupling: an app's internal schema change can silently break the admin plane. Mitigations and the migration trigger:</p>
+<ul>
+  <li><b>Version the connector, not the schema.</b> Each connector maps the app's raw tables → a stable common shape (<code>MerchantRow</code>, <code>SubState</code>). When an app refactors, only its connector changes — the core is insulated.</li>
+  <li><b>Contract tests per connector.</b> A nightly test that runs each connector's queries against the replica catches a breaking schema change before a human does.</li>
+  <li><b>The decouple trigger:</b> when client count / coupling pain crosses the same ~5–10-tenant line where manual catalogs break down <sup class="c">8</sup>, evolve specific apps from direct reads to a thin read-API or CDC/event stream (Debezium → Kafka/Redpanda, or Postgres logical replication into a control-plane store). The connector interface stays identical — only its <em>implementation</em> swaps from "Prisma to replica" to "call app API." That's the whole point of the seam.</li>
+</ul>
+
+<!-- ============ 06 CHAT ============ -->
+<h2 id="chat"><span class="h2n">06</span> In-house support chat &amp; inbox</h2>
+<p class="dek">"Build in-house" — but stand on Chatwoot rather than reinventing conversation management, and respect Shopify's embedded-iframe rules on the widget side.</p>
+
+<div class="call rec">
+  <div class="ct">★ Don't build the inbox from zero — base it on Chatwoot (MIT)</div>
+  <p>Chatwoot is an MIT-licensed OSS live-chat / omni-channel helpdesk ("an alternative to Intercom, Zendesk"). Its community edition <b>already ships</b> the exact features the brief calls for: <b>auto-assignment/routing, teams, private notes &amp; @mentions, labels, canned responses, and CSAT</b>. <sup class="c">5</sup> Either self-host the MIT core and embed its agent inbox, or treat its data model as the reference design for a custom inbox. Building auto-routing + threading + presence from scratch is months you don't need to spend.</p>
+</div>
+<p class="tiny"><b>Open-core caveat:</b> since v2.0 Chatwoot is open-core — the community edition is MIT, but SSO/SAML, audit logs, SLA, and white-labeling live under a separate proprietary enterprise license. For an internal tool the MIT core is plenty; just don't assume those specific enterprise features are free. <sup class="c">5</sup></p>
+
+<h3>The hard part is the embedded widget, not the inbox</h3>
+<p>The widget ships <em>inside each Shopify app's embedded admin</em> (App Bridge, in an iframe under <code>admin.shopify.com</code>). That imposes constraints the research verified:</p>
+<div class="tw">
+<table>
+<thead><tr><th>Constraint</th><th>What it means for the widget</th><th>Confidence</th></tr></thead>
+<tbody>
+  <tr><td>Per-shop CSP <code>frame-ancestors</code></td><td>The host must send, <b>per request</b>, <code>frame-ancestors https://{shop} https://admin.shopify.com</code>. A static value or wildcard is rejected at App Store review. Your <code>shopify-app-react-router</code> sets this automatically — the widget must simply <em>work within</em> it (talk cross-origin to the realtime backend; don't pop a separate top-level window).</td><td><span class="badge b-ver">✓</span><sup class="c">6</sup></td></tr>
+  <tr><td>Firefox <code>frame-src</code> + <code>blob:</code> quirk</td><td>With <code>frame-src 'self'</code>, Firefox blocks <code>blob:</code>/<code>data:</code> navigations inside the embedded iframe (Chrome allows them). <b>Design attachment download/preview to avoid <code>blob:</code> navigation</b> — stream from a real URL instead.</td><td><span class="badge b-ver">✓</span><sup class="c">6</sup></td></tr>
+  <tr><td>Cross-origin to realtime backend</td><td>The widget's WebSocket connects to your control-plane realtime host (a different origin), so CORS + auth handshake (signed session token minted by the host app, scoped to <code>shop</code>) must be explicit.</td><td><span class="badge b-judge">◆</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Realtime transport <span class="badge b-judge">◆</span></h3>
+<p>The inbox feature set is settled (Chatwoot); the <em>transport</em> is a genuine design choice the research did not source — here's the reasoned call:</p>
+<div class="tw">
+<table>
+<thead><tr><th>Option</th><th>Trade-off</th><th>Verdict</th></tr></thead>
+<tbody>
+  <tr><td class="pick">Socket.IO + Redis adapter</td><td>Bi-directional, rooms/presence/typing built-in, reconnection handled, scales horizontally via the Redis you already run. Self-hosted = no per-message cost, data stays in-house (matches "build in-house").</td><td class="win">RECOMMENDED</td></tr>
+  <tr><td>Ably / Pusher (managed)</td><td>Zero realtime ops, global edge, presence built-in — but recurring cost, third-party in the data path, and slightly against the in-house ethos.</td><td>If you want to skip ops</td></tr>
+  <tr><td>Soketi (self-host Pusher protocol)</td><td>OSS, cheap, Pusher-compatible — viable middle ground if you prefer the Pusher channel model.</td><td>Reasonable alt</td></tr>
+  <tr><td>Raw SSE</td><td>Server→client only. Fine for notifications, <b>insufficient</b> for a two-way chat (you'd bolt POST on top and reinvent reconnection).</td><td>Insufficient</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>MVP vs. v2</h3>
+<div class="grid g2">
+  <div class="card"><h5>Chat MVP</h5><div class="pickname">Ship the loop</div><p>Embedded widget (text only) → Socket.IO → persisted conversations (Postgres) → agent inbox in the admin app. Per-shop identity, unread counts, manual assignment, email fallback when no agent online.</p></div>
+  <div class="card"><h5>Chat v2</h5><div class="pickname">Make it a helpdesk</div><p>Auto-assignment/routing, teams, private notes/@mentions, canned responses, labels, typing/presence, attachments (non-<code>blob:</code> path), CSAT, and macros — most of which Chatwoot gives you if you adopt rather than rebuild. <sup class="c">5</sup></p></div>
+</div>
+
+<!-- ============ 07 CONTROL PLANE ============ -->
+<h2 id="controlplane"><span class="h2n">07</span> Multi-app control-plane patterns</h2>
+<p class="dek">The app-selector, the plugin/module system, and the registry — designed so app #5 is a config change, not a refactor.</p>
+
+<ul>
+  <li><b>App registry (tenant catalog).</b> A first-class table of apps: key, display name, theme tokens, connector config, replica DSN ref, enabled modules, feature flags. This <em>is</em> the "tenant catalog" from control-plane theory — config + which "deployment stamp" (DB) each app maps to. <sup class="c">8</sup></li>
+  <li><b>Module/plugin system.</b> Each app contributes <code>AdminModule[]</code> — a route, a nav entry, an RBAC scope, and its analytics queries. The top-bar selector filters the nav to the active app's modules. New module = one file + a registry entry, mirroring how SaleSwitch already does wizard commands.</li>
+  <li><b>Per-app theming.</b> Theme tokens (logo, accent) live in the registry; shadcn/ui + CSS variables re-skin per active app so the inbox/dashboards feel native to each brand.</li>
+  <li><b>Feature flags / remote config.</b> Per-app, per-merchant, and per-internal-role flags to dark-launch admin modules and gate destructive actions. (Unleash self-hosted, or a simple Postgres-backed flag table to start.)</li>
+  <li><b>Lifecycle processes.</b> Onboarding a new app = register connector + replica + modules; offboarding = revoke role + archive. Keep these as scripted, reviewed processes, not tribal knowledge — the same rigor bar as the apps themselves. <sup class="c">8</sup></li>
+</ul>
+
+<!-- ============ 08 SHOPIFY ============ -->
+<h2 id="shopify"><span class="h2n">08</span> Shopify-specific: billing &amp; mandatory GDPR</h2>
+<p class="dek">Two non-negotiables: read subscription state from Shopify (don't build a billing ledger), and make sure every app ships the three compliance webhooks.</p>
+
+<div class="call">
+  <div class="ct">◆ Billing: read Shopify-owned state, don't own a ledger <span class="badge b-ver">✓</span><sup class="c">9</sup></div>
+  <p>App-Store apps are <b>required to use a Shopify-provided billing solution</b>; off-platform billing is effectively prohibited. The canonical mutation to charge is <code>appSubscriptionCreate</code> (recurring/usage <code>AppSubscription</code>). For the control plane, the load-bearing operation is <em>reading</em>: query <code>currentAppInstallation.activeSubscriptions</code> (Admin API) per shop — or the Partner API <code>activeSubscription</code> under Shopify App Pricing. <b>Net:</b> the admin app surfaces plan/MRR/trial/cancellation state read from Shopify; it does not run its own billing engine. <span class="tiny">(Note: Shopify now frames "Shopify App Pricing"/Managed Pricing as the default and the manual Billing-API path as "legacy" — not deprecated; this mainly changes which query returns state.)</span></p>
+</div>
+
+<div class="call danger">
+  <div class="ct">⚠ GDPR compliance webhooks are a hard App-Store gate <span class="badge b-ver">✓</span><sup class="c">10</sup></div>
+  <p>Every app distributed through the App Store <b>must</b> implement three mandatory compliance webhook topics — <code>customers/data_request</code>, <code>customers/redact</code>, <code>shop/redact</code> — <em>regardless of whether it collects personal data</em>. Each must: verify the Shopify HMAC header (return <b>200-series</b> on valid, <b>401 Unauthorized</b> on invalid), complete the requested action within <b>30 days</b>, and be reachable — <b>missing/invalid URLs cause App-Store rejection</b>. This is a per-app obligation the control plane is well placed to <em>monitor</em>: a compliance module tracking webhook delivery health, redaction-request SLAs, and merchant lifecycle state per app/merchant is a concrete high-value feature beyond the core MVP.</p>
+</div>
+
+<h3>Merchant / shop lifecycle</h3>
+<p>Track install / uninstall (<code>app/uninstalled</code>), trial → paid → churned, and shop status (active/frozen/closed) per merchant. Most of this is derivable from the shared-DB read model plus Shopify subscription state; surface it as the merchant "health" timeline (§9, §12).</p>
+
+<!-- ============ 09 SAFETY ============ -->
+<h2 id="safety"><span class="h2n">09</span> Audit logging &amp; admin-action safety</h2>
+<p class="dek">An internal tool with write powers over merchants is a high-value target and a foot-gun. Treat audit + guards as MVP, not later. <span class="badge b-judge">◆</span></p>
+<ul>
+  <li><b>Append-only audit log</b> of every admin action: who, what, which app/merchant, before/after, when, and the request context. This is also your GDPR/SOC-readiness evidence. Build it in your own store — don't assume a framework gives it to you (<span class="badge b-refute">Refine doesn't</span> <sup class="c">2</sup>).</li>
+  <li><b>Destructive-action guards.</b> Type-to-confirm modals for irreversible actions; two-person approval for the most dangerous (e.g. force-cancel a subscription, bulk merchant ops). Mirror SaleSwitch's existing <code>WarningModal</code> discipline.</li>
+  <li><b>Impersonation / "view as merchant"</b> must be explicit, time-boxed, banner-flagged, and audited — impersonation is a well-known privilege-escalation and accountability risk; never let an impersonated session perform writes silently. <sup class="c">11</sup></li>
+  <li><b>Least privilege end-to-end:</b> read-only DB roles per app (§5), RBAC scoping per module, and SSO-gated access (§11). The admin credential should never be able to corrupt an app's production data.</li>
+</ul>
+
+<!-- ============ 10 ANALYTICS ============ -->
+<h2 id="analytics"><span class="h2n">10</span> Analytics architecture</h2>
+<p class="dek">Per-app metrics and dashboards — start in Postgres, move columnar only when volume forces it. <span class="badge b-judge">◆</span></p>
+<div class="tw">
+<table>
+<thead><tr><th>Stage</th><th>Store</th><th>When it's right</th></tr></thead>
+<tbody>
+  <tr><td class="pick">MVP → v1</td><td>Postgres (read-replica reads + materialized views / rollup tables, refreshed by BullMQ)</td><td>Merchant counts, MRR, active campaigns, churn — low-cardinality aggregates over modest data. No new infra; reuses everything you have.</td></tr>
+  <tr><td>Middle ground</td><td>TimescaleDB (Postgres extension)</td><td>Time-series event metrics grow but you want to stay in Postgres operationally.</td></tr>
+  <tr><td>At scale</td><td>ClickHouse or Tinybird</td><td>High-volume event ingestion / sub-second analytics over millions of rows where Postgres aggregates get slow. Columnar engines are purpose-built for this; adopt when (not before) query latency hurts. <sup class="c">12</sup></td></tr>
+</tbody>
+</table>
+</div>
+<p>Feed analytics from the same per-app connectors; do heavy rollups as BullMQ jobs against replicas so dashboards read pre-aggregated tables, not live joins on production data.</p>
+
+<!-- ============ 11 HOSTING ============ -->
+<h2 id="hosting"><span class="h2n">11</span> Hosting &amp; internal auth</h2>
+<p class="dek">Internal-only tool, small team. Persistent server, near the data, behind zero-trust. <span class="badge b-judge">◆</span> (with verified auth pricing)</p>
+
+<h3>Hosting</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Option</th><th>Fit</th><th>Verdict</th></tr></thead>
+<tbody>
+  <tr><td class="pick">Containers on Fly.io / Hetzner / AWS ECS-Fargate</td><td>Persistent process for the WebSocket inbox + multiple long-lived DB pools + BullMQ workers. Co-locate in the same region/network as the app read-replicas for low-latency private reads. Matches your docker-compose muscle memory.</td><td class="win">RECOMMENDED</td></tr>
+  <tr><td>Render / Railway (managed PaaS)</td><td>Least ops, supports persistent services + private networking + managed Redis/Postgres. Great if you'd rather not manage hosts.</td><td>Strong alt (ops-light)</td></tr>
+  <tr><td>Vercel (serverless)</td><td>Excellent for stateless Next.js, but a poor fit here: long-lived WebSockets, per-app connection pools, and BullMQ workers all fight a serverless model. You'd end up running a separate persistent server anyway.</td><td>Avoid as the primary host</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Internal auth + access</h3>
+<div class="call rec">
+  <div class="ct">★ Auth recommendation</div>
+  <p><b>WorkOS AuthKit</b> for the team: <b>free under 1M MAU</b>, and free <b>social login</b> covers Google/Microsoft sign-in for founders + support out of the box (only SAML/OIDC <em>enterprise-SSO connections</em> are paid, at ~$125/connection/mo). <sup class="c">7</sup> Layer your own <b>RBAC</b> (CASL + a roles table) on top — no auth provider hands you finished role/permission logic. Then keep the whole app <b>off the open internet</b>: front it with a zero-trust gateway (Cloudflare Access or Tailscale) so only authenticated devices on your org reach it, with the SSO check as defense-in-depth. <b>Auth.js</b> remains the free self-host fallback but is in maintenance mode since 9/2025 — fine, but not the future-proof default.</p>
+</div>
+<p class="tiny"><b>Internal-tool hardening checklist:</b> zero-trust/network restriction in front · SSO + per-role RBAC · least-privilege read-only DB roles per app · append-only audit log · secrets in a manager (not env files) · encryption keys never co-located with the read role · Sentry alerting on anomalies.</p>
+
+<!-- ============ 12 FEATURES ============ -->
+<h2 id="features"><span class="h2n">12</span> Additional high-value features</h2>
+<p class="dek">Beyond the brief's must-haves — what materially helps a SaaS team run a Shopify-app portfolio. <span class="badge b-judge">◆</span></p>
+<div class="grid g2">
+  <div class="card"><h5>Merchant health &amp; churn scoring</h5><p>A per-merchant health score (usage trend, last-active, support sentiment, plan) → proactive outreach before churn. Built on the analytics rollups.</p></div>
+  <div class="card"><h5>MRR / revenue dashboard</h5><p>Portfolio-wide and per-app MRR, trials, conversions, churn — read from Shopify subscription state (§8), not a separate ledger.</p></div>
+  <div class="card"><h5>Compliance-webhook monitor</h5><p>Per-app delivery health + redaction-request SLA tracker for the three mandatory GDPR webhooks — turns an App-Store gate into a managed dashboard. <sup class="c">10</sup></p></div>
+  <div class="card"><h5>Changelog / announcements to merchants</h5><p>Publish release notes / in-app banners across apps from one place; ties into the per-app module system.</p></div>
+  <div class="card"><h5>Feature flags / remote config</h5><p>Dark-launch admin modules and gate merchant features per app/role without a deploy.</p></div>
+  <div class="card"><h5>Error-tracking integration</h5><p>Surface each app's Sentry issues, filtered to the active app, beside its merchant list — support sees errors in context.</p></div>
+  <div class="card"><h5>Internal runbooks &amp; saved actions</h5><p>Codify common support fixes as guarded, audited one-click actions (re-sync, re-issue, refund-assist).</p></div>
+  <div class="card"><h5>On-call alerting</h5><p>Route worker failures, replication-lag spikes, webhook-delivery drops, and KPI anomalies to Slack/PagerDuty.</p></div>
+</div>
+
+<!-- ============ 13 BACKLOG ============ -->
+<h2 id="backlog"><span class="h2n">13</span> Feature backlog by priority</h2>
+<p class="dek">Grouped MVP / v1 / Later. MVP proves the seam with one tenant (SaleSwitch); v1 generalizes; Later scales.</p>
+<div class="grid g3">
+  <div class="lane mvp"><div class="lh">MVP <span class="tag">SaleSwitch only</span></div>
+    <ul>
+      <li>Auth + SSO + RBAC roles (admin/support/viewer)</li>
+      <li>App registry + 1 connector (SaleSwitch read-replica)</li>
+      <li>Merchant listing (TanStack Table) + detail view</li>
+      <li>Core merchant actions (guarded + audited)</li>
+      <li>Append-only audit log</li>
+      <li>Subscription state read from Shopify</li>
+      <li>Support chat MVP (widget → Socket.IO → inbox)</li>
+      <li>Basic per-app KPI dashboard (Postgres rollups)</li>
+      <li>Zero-trust gateway + Sentry</li>
+    </ul>
+  </div>
+  <div class="lane v1"><div class="lh">v1 <span class="tag">generalize to many</span></div>
+    <ul>
+      <li>Module/plugin system + per-app theming</li>
+      <li>Second app onboarded via connector contract</li>
+      <li>Inbox → helpdesk (Chatwoot features: routing, notes, canned, CSAT)</li>
+      <li>Feature flags / remote config</li>
+      <li>Compliance-webhook monitor</li>
+      <li>MRR + churn/health dashboards</li>
+      <li>Impersonation ("view as merchant", time-boxed)</li>
+      <li>Connector contract tests + replica-lag surfacing</li>
+      <li>Changelog / announcements</li>
+    </ul>
+  </div>
+  <div class="lane later"><div class="lh">Later <span class="tag">scale &amp; decouple</span></div>
+    <ul>
+      <li>ClickHouse/Tinybird for high-volume analytics</li>
+      <li>Decouple hot apps from direct DB → read-API / CDC</li>
+      <li>OpenTelemetry + Grafana stack</li>
+      <li>On-call alerting + runbooks-as-actions</li>
+      <li>Two-person approval for dangerous ops</li>
+      <li>OpenFGA/Oso if authz gets relationship-heavy</li>
+      <li>Self-host enterprise SSO connection if needed</li>
+      <li>Per-app SLA / status dashboards</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 14 ROADMAP ============ -->
+<h2 id="roadmap"><span class="h2n">14</span> Phased roadmap</h2>
+<p class="dek">From "admin for SaleSwitch" to "control plane for the portfolio." Durations are indicative for a small team.</p>
+<div class="road">
+  <div class="phase p0"><span class="pt">Phase 0 — Foundations</span><span class="pw">~1–2 wks</span><p>Scaffold RR7 + tRPC + Prisma; WorkOS auth + RBAC roles; zero-trust gateway; Sentry; CI/CD container deploy near the DBs. Establish the audit-log primitive and the <code>AppConnector</code> interface as the first commit.</p></div>
+  <div class="phase p1"><span class="pt">Phase 1 — SaleSwitch MVP</span><span class="pw">~3–4 wks</span><p>Read-replica + read-only role for SaleSwitch; merchant listing + detail + guarded actions; subscription read from Shopify; first KPI dashboard. Prove the connector seam against a real tenant.</p></div>
+  <div class="phase p1"><span class="pt">Phase 2 — Support inbox</span><span class="pw">~3–5 wks</span><p>Embeddable widget honoring per-shop CSP (and the Firefox <code>blob:</code> rule); Socket.IO+Redis realtime; persisted conversations; agent inbox. Decide adopt-vs-fork Chatwoot at the start of this phase.</p></div>
+  <div class="phase p2"><span class="pt">Phase 3 — Generalize to N apps</span><span class="pw">~3–4 wks</span><p>Promote app-specific code into the module/plugin system + registry + per-app theming; onboard app #2 purely via a new connector + modules — no core changes. This validates "design for many."</p></div>
+  <div class="phase p2"><span class="pt">Phase 4 — Intelligence &amp; compliance</span><span class="pw">ongoing</span><p>MRR/churn/health dashboards, feature flags, compliance-webhook monitor, changelog, error-tracking surfacing. The control plane starts driving decisions, not just displaying data.</p></div>
+  <div class="phase p3"><span class="pt">Phase 5 — Scale &amp; decouple</span><span class="pw">trigger-based</span><p>When client count / coupling pain crosses the ~5–10-tenant line, move the hottest apps off direct reads to a read-API or CDC stream and adopt a columnar analytics store — behind the unchanged connector interface.</p></div>
+</div>
+
+<!-- ============ 15 RISKS ============ -->
+<h2 id="risks"><span class="h2n">15</span> Risks, caveats &amp; open questions</h2>
+<div class="call warn">
+  <div class="ct">⚠ Time-sensitive / version risks to check before you build</div>
+  <ul style="margin:6px 0 0">
+    <li><b>Prisma read-replicas extension</b> — the current package reportedly requires <b>Prisma 7.0+</b> while your apps are on Prisma 6. Routing semantics are stable across versions, but verify compatibility or plan the upgrade before adopting. <sup class="c">4</sup></li>
+    <li><b>Auth.js</b> in maintenance mode since Sept 2025 — fine as a free fallback, not the default for a new tool. <sup class="c">1</sup></li>
+    <li><b>Shopify "App Pricing"</b> now the default; <code>appSubscriptionCreate</code> reframed as "legacy" (not deprecated) — mainly affects which query returns subscription state. <sup class="c">9</sup></li>
+    <li><b>Chatwoot open-core</b> — SSO/SAML, audit logs, SLA, white-labeling are <em>not</em> MIT. Self-host the core; don't assume those are free. <sup class="c">5</sup></li>
+  </ul>
+</div>
+<div class="call refute" style="border-left-color:var(--refute);background:linear-gradient(90deg,rgba(255,143,163,.06),transparent 60%),var(--panel)">
+  <div class="ct" style="color:var(--refute)">✗ The one refuted assumption — honor it</div>
+  <p>"Refine ships built-in auth, RBAC, audit-log, and realtime providers as finished features" was <b>refuted (1-2)</b>. Refine gives you provider <em>interfaces</em> you must wire to a backend — not turnkey RBAC/audit/chat. Don't let a framework choice rest on that belief. <sup class="c">2</sup></p>
+</div>
+<h4>Open questions deferred to a dedicated evaluation (no comparative evidence survived verification)</h4>
+<ul>
+  <li><b>UI component library</b> — shadcn/ui vs Mantine vs AntD vs MUI: recommended on judgment (shadcn/ui), worth a half-day spike against your real merchant grid before committing.</li>
+  <li><b>Realtime transport</b> — Socket.IO recommended on judgment; benchmark against an embedded-iframe cross-origin handshake early.</li>
+  <li><b>Hosting platform</b> — pick driven by where your app read-replicas physically live (co-location beats cleverness).</li>
+  <li><b>Decoupling trigger &amp; connector versioning</b> — define the concrete schema-change contract test and the tenant-count threshold that flips an app from direct reads to API/CDC.</li>
+</ul>
+
+<!-- ============ 16 SOURCES ============ -->
+<h2 id="sources"><span class="h2n">16</span> Sources</h2>
+<p class="dek">Primary-weighted. Findings tied to these were 3-vote adversarially verified; <span class="badge b-judge">◆</span> recommendations are engineering judgment and are <em>not</em> claimed to be sourced.</p>
+<ol class="src">
+  <li id="s1"><b>T3 Stack — create.t3.gg / create-t3-app / Auth.js</b> — Next+tRPC+Prisma+Auth baseline; tRPC as "GraphQL without the boilerplate." <a href="https://create.t3.gg/">create.t3.gg</a> · <a href="https://github.com/t3-oss/create-t3-app">github</a> · <a href="https://authjs.dev/">authjs.dev</a> <span class="q primary">primary</span></li>
+  <li id="s2"><b>Refine</b> — headless CRUD admin meta-framework; built-in auth/RBAC/audit/realtime "out of the box" claim <b>refuted</b>. <a href="https://github.com/refinedev/refine">github.com/refinedev/refine</a> · <a href="https://refine.dev/docs/core/">docs</a> <span class="q primary">primary</span></li>
+  <li id="s3"><b>Prisma — multiple databases / multiple clients</b> — separate schema + long-lived client per DB; endorsed for multi-tenant. <a href="https://www.prisma.io/docs/guides/multiple-databases">multiple-databases</a> · <a href="https://www.prisma.io/docs/guides/multiple-prisma-clients">multiple-prisma-clients</a> <span class="q primary">primary</span></li>
+  <li id="s4"><b>Prisma — read replicas extension</b> — auto-routes reads→replica, writes/transactions→primary; raw queries default to primary. <a href="https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/read-replicas">docs</a> · <a href="https://www.prisma.io/blog/read-replicas-prisma-client-extension-f66prwk56wow">blog</a> · <a href="https://github.com/prisma/extension-read-replicas">github</a> <span class="q primary">primary</span></li>
+  <li id="s5"><b>Chatwoot</b> — MIT OSS helpdesk; auto-assignment, teams, private notes, labels, canned responses, CSAT; open-core since v2.0. <a href="https://github.com/chatwoot/chatwoot">github</a> · <a href="https://www.chatwoot.com/docs/">docs</a> <span class="q primary">primary</span></li>
+  <li id="s6"><b>Shopify — iframe protection &amp; App Bridge</b> — per-shop dynamic <code>frame-ancestors</code>; Firefox <code>frame-src</code>/<code>blob:</code> quirk. <a href="https://shopify.dev/docs/apps/build/security/set-up-iframe-protection">iframe protection</a> · <a href="https://github.com/Shopify/shopify-app-bridge/issues/11">app-bridge #11</a> · <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=1862553">mozilla 1862553</a> <span class="q primary">primary</span></li>
+  <li id="s7"><b>WorkOS — AuthKit pricing</b> — free under 1M MAU; social login (Google/Microsoft) free; SSO connections paid. <a href="https://workos.com/pricing">workos.com/pricing</a> · <a href="https://workos.com/docs/authkit">docs</a> <span class="q primary">primary</span></li>
+  <li id="s8"><b>Microsoft Azure Architecture Center — multitenant control planes</b> — control plane = tenant catalog + lifecycle processes; design it as an app; manual catalog only &lt;10 tenants. <a href="https://learn.microsoft.com/en-us/azure/architecture/guide/multitenant/approaches/control-planes">learn.microsoft.com</a> <span class="q primary">primary</span></li>
+  <li id="s9"><b>Shopify — Billing API / launch billing</b> — <code>appSubscriptionCreate</code>; required Shopify billing; managed pricing default. <a href="https://shopify.dev/docs/api/admin-graphql/latest/mutations/appSubscriptionCreate">appSubscriptionCreate</a> · <a href="https://shopify.dev/docs/apps/launch/billing">billing</a> <span class="q primary">primary</span></li>
+  <li id="s10"><b>Shopify — privacy-law compliance webhooks</b> — three mandatory topics, HMAC 200/401, 30-day window, rejection if missing. <a href="https://shopify.dev/docs/apps/build/compliance/privacy-law-compliance">shopify.dev</a> <span class="q primary">primary</span></li>
+  <li id="s11"><b>User-impersonation risks</b> — accountability/privilege-escalation considerations for "view as user." <a href="https://authress.io/knowledge-base/academy/topics/user-impersonation-risks">authress.io</a> <span class="q secondary">secondary</span></li>
+  <li id="s12"><b>ClickHouse vs PostgreSQL for analytics</b> — columnar store rationale at scale. <a href="https://www.tinybird.co/blog/clickhouse-vs-postgresql-with-extensions">tinybird.co</a> <span class="q blog">blog</span></li>
+</ol>
+<p class="tiny" style="margin-top:24px">Generated from a deep-research pass: 6 angles · 30 sources fetched · 140 claims extracted · 25 adversarially verified (3-vote, needing 2/3 to refute) · 24 confirmed, 1 refuted · 113 agents. Confidence labels: <span class="badge b-ver">✓ verified</span> = backed by the cited primary source(s); <span class="badge b-judge">◆ judgment</span> = reasoned recommendation the research could not independently source; treat the latter as opinion to validate with a short spike.</p>
+
+</main>
+</div>
+</body>
+</html>

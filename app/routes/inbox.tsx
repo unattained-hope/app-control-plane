@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -8,36 +8,42 @@ import {
   Select,
   SelectItem,
   Text,
+  TextInput,
   Textarea,
   Title,
 } from "@tremor/react";
 import { trpc } from "~/lib/trpc.js";
 
 /**
- * Agent inbox (cp-support-inbox, AC7.4).
+ * Agent inbox (cp-support-inbox + Tier 1).
  *
- * Left pane: the conversation list from `trpc.chat.conversations` (filterable by
- * status OPEN / SNOOZED / CLOSED), surfacing per-conversation unread counts and
- * the `lastMessageAt` recency. Selecting a conversation loads its message stream
- * via `trpc.chat.history`, rendered with per-`senderType` styling.
- *
- * The composer is render-only here: the realtime send path is socket.io elsewhere,
- * and a read-only VIEWER cannot reply at all. RBAC is enforced server-side; this
- * route only renders the disabled-composer affordance + an explanatory note. The
- * route owns no business logic — it is loaders/queries + presentation.
+ * Left pane: conversation search/list (`trpc.chat.search`) with per-row priority +
+ * SLA countdown chips (cp-inbox-sla). Right pane: the message stream
+ * (`trpc.chat.history`, including internal notes rendered distinctly), a priority
+ * control, a canned-reply picker, conversation tags, an internal-note composer, and
+ * any captured CSAT. Realtime send remains the socket.io path; this route owns the
+ * non-realtime inbox operations + presentation.
  */
 
 type ConversationStatus = "OPEN" | "SNOOZED" | "CLOSED";
 type StatusFilter = "ALL" | ConversationStatus;
 type SenderType = "MERCHANT" | "AGENT" | "SYSTEM";
+type Priority = "URGENT" | "HIGH" | "NORMAL" | "LOW" | "NONE";
+type SlaState = "ON_TRACK" | "BREACHING" | "BREACHED" | "MET";
 
 interface Conversation {
   readonly id: string;
   readonly shop: string;
   readonly status: ConversationStatus;
   readonly assignedTo: string | null;
+  readonly priority: Priority;
+  readonly slaState: SlaState;
+  readonly firstReplyAt: string | null;
+  readonly firstResponseDueAt: string | null;
+  readonly resolutionDueAt: string | null;
+  readonly csatScore: number | null;
   readonly unreadCount: number;
-  readonly lastMessageAt: string | null; // ISO
+  readonly lastMessageAt: string | null;
 }
 
 interface ChatMessage {
@@ -46,23 +52,19 @@ interface ChatMessage {
   readonly senderType: SenderType;
   readonly senderId: string;
   readonly body: string;
+  readonly internal: boolean;
   readonly attachmentUrl: string | null;
-  readonly createdAt: string; // ISO
+  readonly createdAt: string;
 }
 
-const STATUS_FILTERS: ReadonlyArray<{
-  readonly value: StatusFilter;
-  readonly label: string;
-}> = [
+const STATUS_FILTERS: ReadonlyArray<{ readonly value: StatusFilter; readonly label: string }> = [
   { value: "ALL", label: "All" },
   { value: "OPEN", label: "Open" },
   { value: "SNOOZED", label: "Snoozed" },
   { value: "CLOSED", label: "Closed" },
 ];
 
-const STATUS_TONE: Readonly<
-  Record<ConversationStatus, "emerald" | "amber" | "gray">
-> = {
+const STATUS_TONE: Readonly<Record<ConversationStatus, "emerald" | "amber" | "gray">> = {
   OPEN: "emerald",
   SNOOZED: "amber",
   CLOSED: "gray",
@@ -80,12 +82,48 @@ const SENDER_LABEL: Readonly<Record<SenderType, string>> = {
   SYSTEM: "System",
 };
 
-/** Render an ISO timestamp as a stable, locale-aware label (falls back to raw). */
+const PRIORITIES: readonly Priority[] = ["URGENT", "HIGH", "NORMAL", "LOW", "NONE"];
+
+const PRIORITY_TONE: Readonly<Record<Priority, "rose" | "orange" | "blue" | "gray">> = {
+  URGENT: "rose",
+  HIGH: "orange",
+  NORMAL: "blue",
+  LOW: "gray",
+  NONE: "gray",
+};
+
+const SLA_TONE: Readonly<Record<SlaState, "emerald" | "amber" | "rose" | "gray">> = {
+  ON_TRACK: "gray",
+  BREACHING: "amber",
+  BREACHED: "rose",
+  MET: "emerald",
+};
+
+const SLA_LABEL: Readonly<Record<SlaState, string>> = {
+  ON_TRACK: "On track",
+  BREACHING: "Breaching",
+  BREACHED: "Breached",
+  MET: "Met",
+};
+
 function formatTimestamp(iso: string | null | undefined): string {
   if (!iso) return "—";
   const ts = Date.parse(iso);
   if (Number.isNaN(ts)) return iso;
   return new Date(ts).toLocaleString();
+}
+
+/** Compact countdown ("in 3h 12m" / "overdue 45m") toward an ISO due-time. */
+function countdownLabel(dueIso: string | null): string | null {
+  if (!dueIso) return null;
+  const due = Date.parse(dueIso);
+  if (Number.isNaN(due)) return null;
+  const diffMin = Math.round((due - Date.now()) / 60000);
+  const abs = Math.abs(diffMin);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  const span = h > 0 ? `${h}h ${m}m` : `${m}m`;
+  return diffMin >= 0 ? `due in ${span}` : `overdue ${span}`;
 }
 
 function AsOf({ iso }: { readonly iso: string }) {
@@ -96,7 +134,31 @@ function AsOf({ iso }: { readonly iso: string }) {
   );
 }
 
-/** A single conversation row in the master list; doubles as the selectable button. */
+/** Priority + SLA chips shown on a conversation row and in the detail header. */
+function SlaChips({ conversation }: { readonly conversation: Conversation }) {
+  const due = conversation.firstReplyAt
+    ? conversation.resolutionDueAt
+    : conversation.firstResponseDueAt;
+  const countdown = conversation.priority === "NONE" ? null : countdownLabel(due);
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {conversation.priority !== "NONE" ? (
+        <Badge color={PRIORITY_TONE[conversation.priority]} aria-label={`Priority ${conversation.priority}`}>
+          {conversation.priority}
+        </Badge>
+      ) : null}
+      {conversation.priority !== "NONE" ? (
+        <Badge color={SLA_TONE[conversation.slaState]} aria-label={`SLA ${SLA_LABEL[conversation.slaState]}`}>
+          {SLA_LABEL[conversation.slaState]}
+        </Badge>
+      ) : null}
+      {countdown ? (
+        <Text className="text-xs text-tremor-content-subtle">{countdown}</Text>
+      ) : null}
+    </div>
+  );
+}
+
 function ConversationListItem({
   conversation,
   selected,
@@ -113,9 +175,7 @@ function ConversationListItem({
         type="button"
         onClick={() => onSelect(conversation.id)}
         aria-pressed={selected}
-        aria-label={`Conversation with ${conversation.shop}, ${
-          STATUS_LABEL[conversation.status]
-        }, ${conversation.unreadCount} unread`}
+        aria-label={`Conversation with ${conversation.shop}, ${STATUS_LABEL[conversation.status]}, priority ${conversation.priority}, ${conversation.unreadCount} unread`}
         className={
           selected
             ? "w-full rounded border border-tremor-brand bg-tremor-brand-faint px-3 py-2 text-left"
@@ -123,66 +183,77 @@ function ConversationListItem({
         }
       >
         <Flex justifyContent="between" alignItems="start">
-          <Text className="font-medium text-tremor-content-strong">
-            {conversation.shop}
-          </Text>
+          <Text className="font-medium text-tremor-content-strong">{conversation.shop}</Text>
           {hasUnread ? (
-            <Badge
-              color="rose"
-              aria-label={`${conversation.unreadCount} unread messages`}
-            >
+            <Badge color="rose" aria-label={`${conversation.unreadCount} unread messages`}>
               {conversation.unreadCount}
             </Badge>
           ) : null}
         </Flex>
+        <div className="mt-1">
+          <SlaChips conversation={conversation} />
+        </div>
         <Flex justifyContent="between" alignItems="center" className="mt-1 gap-2">
-          <Badge
-            color={STATUS_TONE[conversation.status]}
-            aria-label={`Status ${STATUS_LABEL[conversation.status]}`}
-          >
+          <Badge color={STATUS_TONE[conversation.status]} aria-label={`Status ${STATUS_LABEL[conversation.status]}`}>
             {STATUS_LABEL[conversation.status]}
           </Badge>
           <Text className="text-xs text-tremor-content-subtle">
             {conversation.lastMessageAt ? (
-              <time dateTime={conversation.lastMessageAt}>
-                {formatTimestamp(conversation.lastMessageAt)}
-              </time>
+              <time dateTime={conversation.lastMessageAt}>{formatTimestamp(conversation.lastMessageAt)}</time>
             ) : (
               "No messages yet"
             )}
           </Text>
         </Flex>
         {conversation.assignedTo ? (
-          <Text className="mt-1 text-xs text-tremor-content-subtle">
-            Assigned to {conversation.assignedTo}
-          </Text>
+          <Text className="mt-1 text-xs text-tremor-content-subtle">Assigned to {conversation.assignedTo}</Text>
         ) : null}
       </button>
     </li>
   );
 }
 
-/** The conversation master list (left pane), with status filter + states. */
 function ConversationList({
   statusFilter,
   onStatusFilterChange,
+  search,
+  onSearchChange,
+  conversations,
+  isLoading,
+  isError,
+  errorMessage,
   selectedId,
   onSelect,
 }: {
   readonly statusFilter: StatusFilter;
   readonly onStatusFilterChange: (next: StatusFilter) => void;
+  readonly search: string;
+  readonly onSearchChange: (next: string) => void;
+  readonly conversations: readonly Conversation[];
+  readonly isLoading: boolean;
+  readonly isError: boolean;
+  readonly errorMessage?: string;
   readonly selectedId: string | null;
   readonly onSelect: (id: string) => void;
 }) {
-  const conversationsQuery = trpc.chat.conversations.useQuery(
-    statusFilter === "ALL" ? {} : { status: statusFilter },
-  );
-
   return (
     <Card aria-label="Conversations">
-      <Flex justifyContent="between" alignItems="center" className="gap-2">
-        <Title>Conversations</Title>
-      </Flex>
+      <Title>Conversations</Title>
+
+      <div className="mt-3">
+        <label htmlFor="inbox-search" className="sr-only">
+          Search conversations
+        </label>
+        <input
+          id="inbox-search"
+          type="search"
+          placeholder="Search shop, subject, tag, or message…"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          aria-label="Search conversations"
+          className="w-full rounded-tremor-default border border-tremor-border bg-tremor-background px-3 py-2 text-sm text-tremor-content placeholder-tremor-content-subtle focus:outline-none focus:ring-2 focus:ring-tremor-brand"
+        />
+      </div>
 
       <div className="mt-3">
         <label htmlFor="inbox-status-filter" className="sr-only">
@@ -205,33 +276,23 @@ function ConversationList({
 
       <Divider className="my-3" />
 
-      {conversationsQuery.isLoading ? (
+      {isLoading ? (
         <Text role="status" aria-busy="true">
           Loading conversations…
         </Text>
-      ) : conversationsQuery.isError ? (
+      ) : isError ? (
         <div role="alert" aria-label="Conversation load error">
           <Text>Couldn't load conversations.</Text>
-          <Text className="mt-1 text-xs text-tremor-content-subtle">
-            {conversationsQuery.error.message}
-          </Text>
+          <Text className="mt-1 text-xs text-tremor-content-subtle">{errorMessage}</Text>
         </div>
-      ) : (conversationsQuery.data ?? []).length === 0 ? (
+      ) : conversations.length === 0 ? (
         <Text role="status" className="text-tremor-content-subtle">
           No conversations match this filter.
         </Text>
       ) : (
-        <ul
-          className="flex flex-col gap-2"
-          aria-label="Conversation list"
-        >
-          {(conversationsQuery.data ?? []).map((c) => (
-            <ConversationListItem
-              key={c.id}
-              conversation={c}
-              selected={c.id === selectedId}
-              onSelect={onSelect}
-            />
+        <ul className="flex flex-col gap-2" aria-label="Conversation list">
+          {conversations.map((c) => (
+            <ConversationListItem key={c.id} conversation={c} selected={c.id === selectedId} onSelect={onSelect} />
           ))}
         </ul>
       )}
@@ -239,8 +300,27 @@ function ConversationList({
   );
 }
 
-/** One message bubble, styled by `senderType`. */
 function MessageBubble({ message }: { readonly message: ChatMessage }) {
+  if (message.internal) {
+    return (
+      <li
+        className="mx-auto w-full rounded border border-amber-300 bg-amber-50 px-3 py-2"
+        aria-label="Internal note"
+      >
+        <Flex justifyContent="between" alignItems="baseline" className="gap-3">
+          <Text className="text-xs font-medium text-amber-800">
+            Internal note
+            <span className="text-amber-700"> · {message.senderId}</span>
+          </Text>
+          <Text className="text-xs text-amber-700">
+            <time dateTime={message.createdAt}>{formatTimestamp(message.createdAt)}</time>
+          </Text>
+        </Flex>
+        <Text className="mt-1 whitespace-pre-wrap text-amber-900">{message.body}</Text>
+      </li>
+    );
+  }
+
   const alignClass =
     message.senderType === "AGENT"
       ? "ml-auto bg-tremor-brand-faint border-tremor-brand"
@@ -249,24 +329,17 @@ function MessageBubble({ message }: { readonly message: ChatMessage }) {
         : "mr-auto bg-tremor-background border-tremor-border";
 
   return (
-    <li
-      className={`max-w-[80%] rounded border px-3 py-2 ${alignClass}`}
-      aria-label={`${SENDER_LABEL[message.senderType]} message`}
-    >
+    <li className={`max-w-[80%] rounded border px-3 py-2 ${alignClass}`} aria-label={`${SENDER_LABEL[message.senderType]} message`}>
       <Flex justifyContent="between" alignItems="baseline" className="gap-3">
         <Text className="text-xs font-medium text-tremor-content-strong">
           {SENDER_LABEL[message.senderType]}
           <span className="text-tremor-content-subtle"> · {message.senderId}</span>
         </Text>
         <Text className="text-xs text-tremor-content-subtle">
-          <time dateTime={message.createdAt}>
-            {formatTimestamp(message.createdAt)}
-          </time>
+          <time dateTime={message.createdAt}>{formatTimestamp(message.createdAt)}</time>
         </Text>
       </Flex>
-      <Text className="mt-1 whitespace-pre-wrap text-tremor-content-strong">
-        {message.body}
-      </Text>
+      <Text className="mt-1 whitespace-pre-wrap text-tremor-content-strong">{message.body}</Text>
       {message.attachmentUrl ? (
         <a
           href={message.attachmentUrl}
@@ -282,61 +355,201 @@ function MessageBubble({ message }: { readonly message: ChatMessage }) {
   );
 }
 
-/**
- * Read-only reply composer. The send path is socket.io elsewhere; this renders
- * the textarea + disabled send button only. A VIEWER (read-only role) cannot
- * reply — server-side RBAC is authoritative, so the control is rendered disabled
- * with an explanatory note rather than wired to any mutation.
- */
-function ReplyComposer({ shop }: { readonly shop: string }) {
-  const [draft, setDraft] = useState("");
+/** Priority control — sets priority server-side (recomputes SLA due-times). */
+function PrioritySelect({
+  conversation,
+  onChanged,
+}: {
+  readonly conversation: Conversation;
+  readonly onChanged: () => void;
+}) {
+  const setPriority = trpc.chat.setPriority.useMutation({ onSuccess: onChanged });
+  return (
+    <div>
+      <label htmlFor="inbox-priority" className="sr-only">
+        Set priority
+      </label>
+      <Select
+        id="inbox-priority"
+        value={conversation.priority}
+        onValueChange={(v) =>
+          setPriority.mutate({ conversationId: conversation.id, priority: v as Priority })
+        }
+        aria-label="Set conversation priority"
+        enableClear={false}
+      >
+        {PRIORITIES.map((p) => (
+          <SelectItem key={p} value={p}>
+            {p}
+          </SelectItem>
+        ))}
+      </Select>
+      {setPriority.isError ? (
+        <Text className="mt-1 text-xs text-rose-600" role="alert">
+          {setPriority.error.message}
+        </Text>
+      ) : null}
+    </div>
+  );
+}
+
+/** Canned-reply picker: search shortcuts, preview the substituted body. */
+function CannedReplyPicker({ shop }: { readonly shop: string }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const listQuery = trpc.canned.list.useQuery();
+  const applyQuery = trpc.canned.render.useQuery(
+    { id: selectedId ?? "", shop },
+    { enabled: selectedId !== null },
+  );
+
+  const replies = listQuery.data ?? [];
 
   return (
+    <div aria-label="Canned replies">
+      <Text className="text-xs font-medium text-tremor-content-strong">Canned replies</Text>
+      {replies.length === 0 ? (
+        <Text className="mt-1 text-xs text-tremor-content-subtle">No canned replies yet.</Text>
+      ) : (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {replies.map((r) => (
+            <Button
+              key={r.id}
+              size="xs"
+              variant="secondary"
+              type="button"
+              onClick={() => setSelectedId(r.id)}
+              aria-label={`Insert canned reply ${r.shortcut}`}
+            >
+              {r.shortcut}
+            </Button>
+          ))}
+        </div>
+      )}
+      {selectedId && applyQuery.data ? (
+        <Textarea
+          className="mt-2"
+          readOnly
+          value={applyQuery.data.body}
+          rows={3}
+          aria-label="Canned reply preview (substituted)"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Conversation tags: add/remove (reply-gated). */
+function ConversationTags({
+  conversationId,
+}: {
+  readonly conversationId: string;
+}) {
+  const [label, setLabel] = useState("");
+  const utils = trpc.useUtils();
+  const tagsQuery = trpc.chat.tags.useQuery({ conversationId });
+  const invalidate = () => void utils.chat.tags.invalidate({ conversationId });
+  const addTag = trpc.chat.addTag.useMutation({
+    onSuccess: () => {
+      setLabel("");
+      invalidate();
+    },
+  });
+  const removeTag = trpc.chat.removeTag.useMutation({ onSuccess: invalidate });
+
+  const tags = tagsQuery.data ?? [];
+
+  return (
+    <div aria-label="Conversation tags">
+      <Text className="text-xs font-medium text-tremor-content-strong">Tags</Text>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {tags.length === 0 ? (
+          <Text className="text-xs text-tremor-content-subtle">No tags.</Text>
+        ) : (
+          tags.map((t) => (
+            <Badge key={t} aria-label={`Tag ${t}`}>
+              {t}
+              <button
+                type="button"
+                className="ml-1"
+                aria-label={`Remove tag ${t}`}
+                onClick={() => removeTag.mutate({ conversationId, label: t })}
+              >
+                ×
+              </button>
+            </Badge>
+          ))
+        )}
+      </div>
+      <form
+        className="mt-2 flex gap-2"
+        aria-label="Add conversation tag"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!label.trim()) return;
+          addTag.mutate({ conversationId, label: label.trim() });
+        }}
+      >
+        <TextInput placeholder="Add tag…" value={label} onValueChange={setLabel} aria-label="Tag label" />
+        <Button size="xs" type="submit" disabled={!label.trim() || addTag.isPending}>
+          Add
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+/** Internal-note composer (agent-only; never delivered to the merchant). */
+function InternalNoteComposer({
+  conversationId,
+  onPosted,
+}: {
+  readonly conversationId: string;
+  readonly onPosted: () => void;
+}) {
+  const [body, setBody] = useState("");
+  const post = trpc.chat.postInternalNote.useMutation({
+    onSuccess: () => {
+      setBody("");
+      onPosted();
+    },
+  });
+  return (
     <form
-      aria-label={`Reply to ${shop}`}
+      aria-label="Add internal note"
       onSubmit={(e) => {
-        // No-op: realtime send is handled by socket.io elsewhere.
         e.preventDefault();
+        if (!body.trim()) return;
+        post.mutate({ conversationId, body: body.trim() });
       }}
     >
-      <label htmlFor="inbox-reply-body" className="sr-only">
-        Reply message
+      <label htmlFor="inbox-internal-note" className="sr-only">
+        Internal note (agent-only)
       </label>
       <Textarea
-        id="inbox-reply-body"
-        placeholder="Write a reply…"
-        value={draft}
-        onValueChange={setDraft}
-        rows={3}
-        aria-label="Reply message"
-        aria-describedby="inbox-reply-note"
+        id="inbox-internal-note"
+        placeholder="Internal note — visible to agents only…"
+        value={body}
+        onValueChange={setBody}
+        rows={2}
+        aria-label="Internal note body"
       />
-      <Flex justifyContent="between" alignItems="center" className="mt-2 gap-2">
-        <Text
-          id="inbox-reply-note"
-          className="text-xs text-tremor-content-subtle"
-          role="note"
-        >
-          Sending is handled in realtime over the live channel. Read-only viewers
-          cannot reply.
-        </Text>
-        <Button type="submit" disabled aria-disabled="true">
-          Send
+      <Flex justifyContent="end" className="mt-1">
+        <Button size="xs" type="submit" variant="secondary" disabled={!body.trim() || post.isPending}>
+          Add internal note
         </Button>
       </Flex>
     </form>
   );
 }
 
-/** The selected-conversation detail pane (right): message stream + composer. */
-function ConversationDetail({
-  conversation,
-}: {
-  readonly conversation: Conversation;
-}) {
-  const historyQuery = trpc.chat.history.useQuery({
-    conversationId: conversation.id,
-  });
+function ConversationDetail({ conversation }: { readonly conversation: Conversation }) {
+  const historyQuery = trpc.chat.history.useQuery({ conversationId: conversation.id });
+  const utils = trpc.useUtils();
+  const refresh = () => {
+    void utils.chat.history.invalidate({ conversationId: conversation.id });
+    void utils.chat.conversations.invalidate();
+    void utils.chat.search.invalidate();
+  };
 
   return (
     <Card aria-label={`Conversation with ${conversation.shop}`}>
@@ -344,18 +557,34 @@ function ConversationDetail({
         <div>
           <Title>{conversation.shop}</Title>
           <Text className="mt-1 text-tremor-content-subtle">
-            {conversation.assignedTo
-              ? `Assigned to ${conversation.assignedTo}`
-              : "Unassigned"}
+            {conversation.assignedTo ? `Assigned to ${conversation.assignedTo}` : "Unassigned"}
           </Text>
+          <div className="mt-1">
+            <SlaChips conversation={conversation} />
+          </div>
         </div>
-        <Badge
-          color={STATUS_TONE[conversation.status]}
-          aria-label={`Status ${STATUS_LABEL[conversation.status]}`}
-        >
+        <Badge color={STATUS_TONE[conversation.status]} aria-label={`Status ${STATUS_LABEL[conversation.status]}`}>
           {STATUS_LABEL[conversation.status]}
         </Badge>
       </Flex>
+
+      {conversation.csatScore != null ? (
+        <div className="mt-2 rounded border border-emerald-300 bg-emerald-50 px-2 py-1">
+          <Text className="text-xs text-emerald-800" aria-label={`CSAT score ${conversation.csatScore} of 5`}>
+            CSAT: {conversation.csatScore}/5
+          </Text>
+        </div>
+      ) : null}
+
+      <Divider className="my-3" />
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <PrioritySelect conversation={conversation} onChanged={refresh} />
+        <ConversationTags conversationId={conversation.id} />
+      </div>
+
+      <Divider className="my-3" />
+      <CannedReplyPicker shop={conversation.shop} />
 
       <Divider className="my-3" />
 
@@ -366,19 +595,14 @@ function ConversationDetail({
       ) : historyQuery.isError ? (
         <div role="alert" aria-label="Message history load error">
           <Text>Couldn't load this conversation.</Text>
-          <Text className="mt-1 text-xs text-tremor-content-subtle">
-            {historyQuery.error.message}
-          </Text>
+          <Text className="mt-1 text-xs text-tremor-content-subtle">{historyQuery.error.message}</Text>
         </div>
       ) : (historyQuery.data ?? []).length === 0 ? (
         <Text role="status" className="text-tremor-content-subtle">
           No messages in this conversation yet.
         </Text>
       ) : (
-        <ul
-          className="flex max-h-[55vh] flex-col gap-2 overflow-y-auto"
-          aria-label="Message history"
-        >
+        <ul className="flex max-h-[45vh] flex-col gap-2 overflow-y-auto" aria-label="Message history">
           {(historyQuery.data ?? []).map((m) => (
             <MessageBubble key={m.id} message={m} />
           ))}
@@ -386,41 +610,49 @@ function ConversationDetail({
       )}
 
       <Divider className="my-3" />
-
-      <ReplyComposer shop={conversation.shop} />
+      <InternalNoteComposer conversationId={conversation.id} onPosted={refresh} />
     </Card>
   );
 }
 
 export default function Inbox() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("OPEN");
+  const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Re-read the active list so the detail pane can resolve the selected row's
-  // metadata (status/shop/assignment) without a second per-conversation query.
-  const conversationsQuery = trpc.chat.conversations.useQuery(
-    statusFilter === "ALL" ? {} : { status: statusFilter },
-  );
+  const searchQuery = trpc.chat.search.useQuery({
+    query: search.trim() || undefined,
+    status: statusFilter === "ALL" ? undefined : statusFilter,
+    page: 1,
+    pageSize: 50,
+  });
 
-  const selected =
-    (conversationsQuery.data ?? []).find((c) => c.id === selectedId) ?? null;
+  const conversations: readonly Conversation[] = useMemo(
+    () => searchQuery.data?.rows ?? [],
+    [searchQuery.data],
+  );
+  const selected = conversations.find((c) => c.id === selectedId) ?? null;
 
   return (
     <main className="p-6" aria-label="Agent inbox">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
         <Title>Inbox</Title>
-        {conversationsQuery.data ? (
-          <AsOf iso={new Date().toISOString()} />
-        ) : null}
+        {searchQuery.data ? <AsOf iso={new Date().toISOString()} /> : null}
       </Flex>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[20rem_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[22rem_1fr]">
         <ConversationList
           statusFilter={statusFilter}
           onStatusFilterChange={(next) => {
             setStatusFilter(next);
             setSelectedId(null);
           }}
+          search={search}
+          onSearchChange={setSearch}
+          conversations={conversations}
+          isLoading={searchQuery.isLoading}
+          isError={searchQuery.isError}
+          errorMessage={searchQuery.error?.message}
           selectedId={selectedId}
           onSelect={setSelectedId}
         />

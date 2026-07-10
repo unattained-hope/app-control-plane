@@ -11,6 +11,7 @@
     "dev": "react-router dev",
     "build": "react-router build",
     "start": "node ./server/start.js",
+    "worker": "tsx --env-file=.env app/server/workers/devWorker.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

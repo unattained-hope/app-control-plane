@@ -1,7 +1,10 @@
 import type { AdminIdentity } from "../auth.js";
 import { getDb } from "../db.js";
 import { getAuditService } from "./auditService.js";
+import { getBreakGlassService } from "./breakGlassService.js";
+import { getConnector } from "../connectors/registry.js";
 import { getConfig, isAppAdminApiConfigured } from "~/lib/config.js";
+import { AuditActions } from "~/lib/auditActions.js";
 
 /**
  * Merchant actions (cp-merchant-actions). Two classes:
@@ -39,6 +42,13 @@ export class AppApiUnavailableError extends Error {
   }
 }
 
+export class ReasonRequiredError extends Error {
+  readonly code = "REASON_REQUIRED";
+  constructor() {
+    super("A reason is required to reveal protected customer data.");
+  }
+}
+
 function assertConfirmed(ctx: ActionContext, expected: string): void {
   if (ctx.confirmText.trim() !== expected) {
     throw new ConfirmationError();
@@ -48,6 +58,7 @@ function assertConfirmed(ctx: ActionContext, expected: string): void {
 export class MerchantActionService {
   private readonly db = getDb();
   private readonly audit = getAuditService();
+  private readonly breakGlass = getBreakGlassService();
 
   /** Add a note. Audited in the same transaction. */
   async addNote(ctx: ActionContext, shop: string, body: string): Promise<{ id: string }> {
@@ -59,9 +70,10 @@ export class MerchantActionService {
       await this.audit.append(
         {
           actorUserId: ctx.actor.id,
+          actorEmail: ctx.actor.email,
           appKey: ctx.appKey,
           merchantShop: shop,
-          action: "merchant.note.add",
+          action: AuditActions.MerchantNoteAdd,
           target: note.id,
           before: null,
           after: { body },
@@ -86,9 +98,10 @@ export class MerchantActionService {
       await this.audit.append(
         {
           actorUserId: ctx.actor.id,
+          actorEmail: ctx.actor.email,
           appKey: ctx.appKey,
           merchantShop: existing.shop,
-          action: "merchant.note.edit",
+          action: AuditActions.MerchantNoteEdit,
           target: noteId,
           before: { body: existing.body },
           after: { body },
@@ -108,9 +121,10 @@ export class MerchantActionService {
       await this.audit.append(
         {
           actorUserId: ctx.actor.id,
+          actorEmail: ctx.actor.email,
           appKey: ctx.appKey,
           merchantShop: shop,
-          action: "merchant.tag.add",
+          action: AuditActions.MerchantTagAdd,
           target: label,
           before: null,
           after: { label },
@@ -132,9 +146,10 @@ export class MerchantActionService {
       await this.audit.append(
         {
           actorUserId: ctx.actor.id,
+          actorEmail: ctx.actor.email,
           appKey: ctx.appKey,
           merchantShop: shop,
-          action: "merchant.tag.remove",
+          action: AuditActions.MerchantTagRemove,
           target: label,
           before: { label },
           after: null,
@@ -181,6 +196,7 @@ export class MerchantActionService {
     // Audit the attempt + outcome regardless of success.
     await this.audit.append({
       actorUserId: ctx.actor.id,
+      actorEmail: ctx.actor.email,
       appKey: ctx.appKey,
       merchantShop: shop,
       action: `merchant.${actionKey}`,
@@ -191,6 +207,44 @@ export class MerchantActionService {
       userAgent: ctx.userAgent,
     });
     return { ok };
+  }
+
+  /**
+   * Reveal a merchant's unmasked PII (cp-pii-governance). Returns the raw value AND
+   * writes exactly one `merchant.pii.view` audit row capturing the actor, target,
+   * and a REQUIRED typed reason — the "access log to protected customer data" Level-2
+   * control. Role enforcement (`pii:view`) happens in the router; a missing reason is
+   * rejected here before any value is read. Reads the value via the connector
+   * (replica) — the masked read path is bypassed only through this audited call.
+   */
+  async revealPii(
+    ctx: Omit<ActionContext, "confirmText">,
+    shop: string,
+    reason: string,
+  ): Promise<{ field: "email"; value: string | null }> {
+    if (!reason.trim()) {
+      throw new ReasonRequiredError();
+    }
+    // Justified, time-boxed access (cp-break-glass-rbac): `pii:view` makes the actor
+    // ELIGIBLE; a live break-glass grant authorizes the reveal RIGHT NOW. No active
+    // grant ⇒ FORBIDDEN (the UI requests one — with this same reason — first).
+    await this.breakGlass.requireActiveGrant(ctx.appKey, ctx.actor.id, "PII_REVEAL", shop);
+    const connector = await getConnector(ctx.appKey);
+    const detail = await connector.getMerchant(shop);
+    const value = detail?.email ?? null;
+    await this.audit.append({
+      actorUserId: ctx.actor.id,
+      actorEmail: ctx.actor.email,
+      appKey: ctx.appKey,
+      merchantShop: shop,
+      action: AuditActions.MerchantPiiView,
+      target: shop,
+      before: null,
+      after: { field: "email", reason: reason.trim() },
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+    return { field: "email", value };
   }
 }
 

@@ -29,7 +29,7 @@ export default defineConfig({
     // Load the control-plane .env into the server process (Vite doesn't populate
     // process.env for server code by default); pin the port for determinism.
     command: `node --env-file=.env node_modules/@react-router/dev/bin.js dev --port ${PORT}`,
-    url: `http://localhost:${PORT}/`,
+    url: `http://localhost:${PORT}/healthz`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     stdout: "pipe",

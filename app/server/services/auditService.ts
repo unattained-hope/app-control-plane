@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { AuditActorType, AuditSource, Prisma, PrismaClient } from "@prisma/client";
 import { getDb } from "../db.js";
 
 /**
@@ -17,6 +17,12 @@ export interface AuditInput {
   readonly after?: Prisma.InputJsonValue | null;
   readonly ip?: string | null;
   readonly userAgent?: string | null;
+  // Structured actor + source (cp-audit-taxonomy). Optional + defaulted so every
+  // existing call site keeps compiling: UI staff actions default to INTERNAL/UI;
+  // background-job writes pass SYSTEM/JOB.
+  readonly actorEmail?: string | null;
+  readonly actorType?: AuditActorType;
+  readonly source?: AuditSource;
 }
 
 /** A Prisma client OR an interactive-transaction client. */
@@ -36,6 +42,9 @@ export class AuditService {
         after: input.after ?? undefined,
         ip: input.ip ?? null,
         userAgent: input.userAgent ?? null,
+        actorEmail: input.actorEmail ?? null,
+        actorType: input.actorType ?? "INTERNAL",
+        source: input.source ?? "UI",
       },
     });
   }
@@ -48,6 +57,8 @@ export class AuditService {
     if (filter.appKey) where.appKey = filter.appKey;
     if (filter.merchantShop) where.merchantShop = filter.merchantShop;
     if (filter.action) where.action = filter.action;
+    if (filter.actorType) where.actorType = filter.actorType;
+    if (filter.source) where.source = filter.source;
     if (filter.from || filter.to) {
       where.createdAt = {};
       if (filter.from) where.createdAt.gte = filter.from;
@@ -69,6 +80,9 @@ export class AuditService {
       after: r.after,
       ip: r.ip,
       userAgent: r.userAgent,
+      actorEmail: r.actorEmail,
+      actorType: r.actorType,
+      source: r.source,
       createdAt: r.createdAt.toISOString(),
     }));
   }
@@ -79,6 +93,8 @@ export interface AuditQuery {
   readonly appKey?: string;
   readonly merchantShop?: string;
   readonly action?: string;
+  readonly actorType?: AuditActorType;
+  readonly source?: AuditSource;
   readonly from?: Date;
   readonly to?: Date;
   readonly limit?: number;
@@ -95,6 +111,9 @@ export interface AuditRow {
   readonly after: unknown;
   readonly ip: string | null;
   readonly userAgent: string | null;
+  readonly actorEmail: string | null;
+  readonly actorType: AuditActorType;
+  readonly source: AuditSource;
   readonly createdAt: string;
 }
 

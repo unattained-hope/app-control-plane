@@ -13,13 +13,7 @@ import type {
  * to the replica, so directory behavior (search across domain/name/email, sort,
  * pagination) is exercised end-to-end without a database.
  */
-const SEED: RawShopRow[] = [
-  mk("aurora-threads.myshopify.com", "Aurora Threads", "owner@aurora.example", "active", "installed", "Pro", -40, null),
-  mk("bold-brew.myshopify.com", "Bold Brew Coffee", "hi@boldbrew.example", "active", "installed", "Starter", -12, null),
-  mk("cedar-co.myshopify.com", "Cedar & Co", "team@cedar.example", "active", "installed", "Pro", -3, null),
-  mk("driftwood.myshopify.com", "Driftwood Home", "sales@driftwood.example", "frozen", "installed", "Starter", -120, null),
-  mk("ember-goods.myshopify.com", "Ember Goods", null, "uninstalled", "uninstalled", null, -200, -5),
-];
+const SEED: RawShopRow[] = [];
 
 function mk(
   shopDomain: string,

@@ -22,4 +22,9 @@ export const directoryRouter = router({
   detail: requireAbility("view")
     .input(z.object({ shop: z.string().min(1) }))
     .query(({ ctx, input }) => getMerchantService().detail(ctx.appKey, input.shop)),
+
+  /** Merchant 360 (cp-merchant-360): detail + conversation history + audit trail. */
+  overview: requireAbility("view")
+    .input(z.object({ shop: z.string().min(1) }))
+    .query(({ ctx, input }) => getMerchantService().overview(ctx.appKey, input.shop)),
 });

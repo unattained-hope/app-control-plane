@@ -41,6 +41,126 @@ enum SenderType {
   SYSTEM
 }
 
+/// Support-desk priority on a conversation (cp-inbox-sla). `NONE` ⇒ no SLA.
+enum Priority {
+  URGENT
+  HIGH
+  NORMAL
+  LOW
+  NONE
+}
+
+/// SLA lifecycle of a conversation's first-response/resolution timers (cp-inbox-sla).
+enum SlaState {
+  ON_TRACK
+  BREACHING
+  BREACHED
+  MET
+}
+
+/// Which attribute an assignment rule matches on (cp-conversation-routing).
+enum RuleMatchField {
+  KEYWORD
+  PLAN
+  PRIORITY
+  SHOP
+}
+
+/// Whether an audit row was produced by a staff user or an automated job
+/// (cp-audit-taxonomy).
+enum AuditActorType {
+  INTERNAL
+  SYSTEM
+}
+
+/// The surface an audit row originated from (cp-audit-taxonomy).
+enum AuditSource {
+  UI
+  API
+  JOB
+}
+
+/// Lifecycle of an ingested Shopify webhook (cp-webhook-ingestion). `DEAD_LETTER`
+/// is the terminal state after retries exhaust (cp-webhook-reliability) — never
+/// auto-retried; surfaced in the failed-delivery view for an audited manual replay.
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  DEAD_LETTER
+}
+
+/// What an elevated, time-boxed break-glass grant authorizes (cp-break-glass-rbac).
+enum BreakGlassScope {
+  PII_REVEAL
+  IMPERSONATION
+}
+
+/// Lifecycle of a break-glass grant (cp-break-glass-rbac). Non-sensitive scopes
+/// self-activate (`ACTIVE`); sensitive ones wait on ADMIN approval (`REQUESTED` →
+/// `APPROVED`/`DENIED`). `EXPIRED` is set by the sweep once past `expiresAt`.
+enum BreakGlassStatus {
+  REQUESTED
+  APPROVED
+  ACTIVE
+  EXPIRED
+  REVOKED
+  DENIED
+}
+
+/// The three mandatory Shopify compliance topics (cp-compliance-dsr).
+enum ComplianceTopic {
+  CUSTOMERS_DATA_REQUEST
+  CUSTOMERS_REDACT
+  SHOP_REDACT
+}
+
+/// SLA-tracked lifecycle of a data-subject request (cp-compliance-dsr).
+enum ComplianceStatus {
+  RECEIVED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+/// Class of a control-plane-owned billing alert (cp-billing-monitoring).
+enum BillingAlertKind {
+  CAP_APPROACHING
+}
+
+/// Merchant health band (cp-merchant-health). Derived from a weighted score over
+/// subscription/billing/usage/support/lifecycle signals; drives the at-risk list.
+enum HealthBand {
+  HEALTHY
+  AT_RISK
+  CRITICAL
+}
+
+/// A merchant lifecycle transition (cp-uninstall-churn). `app/uninstalled` records
+/// `UNINSTALL`; a previously-uninstalled shop reappearing active records `REINSTALL`.
+enum LifecycleKind {
+  INSTALL
+  UNINSTALL
+  REINSTALL
+}
+
+/// Who an announcement targets (cp-announcements-nps). `audienceValue` holds the
+/// plan name (`PLAN`) or a comma-separated shop list (`SHOP_LIST`); unused for `ALL`.
+enum AnnouncementAudience {
+  ALL
+  PLAN
+  SHOP_LIST
+}
+
+/// Lifecycle of a merchant-requested plan change (cp-self-serve-billing). The control
+/// plane records + dispatches to the app admin API; it never mutates billing directly.
+enum PlanChangeStatus {
+  REQUESTED
+  DISPATCHED
+  COMPLETED
+  FAILED
+}
+
 /// Mirrors WorkOS identity; role lives here.
 model AdminUser {
   id        String     @id @default(cuid())
@@ -76,17 +196,23 @@ model AuditLog {
   actorUserId  String
   appKey       String
   merchantShop String? // shop domain if action targets a merchant
-  action       String // e.g. "merchant.note.add", "user.role.change"
+  action       String // e.g. "merchant.note.add", "user.role.change" (cp-audit-taxonomy)
   target       String?
   before       Json?
   after        Json?
   ip           String?
   userAgent    String?
-  createdAt    DateTime @default(now())
+  // Structured actor + source (cp-audit-taxonomy). Nullable/defaulted so existing
+  // rows backfill cleanly and the append-only invariant is never broken.
+  actorEmail   String?
+  actorType    AuditActorType @default(INTERNAL)
+  source       AuditSource    @default(UI)
+  createdAt    DateTime       @default(now())
 
   @@index([appKey, createdAt])
   @@index([merchantShop])
   @@index([actorUserId])
+  @@index([source])
   @@map("audit_logs")
 }
 
@@ -115,22 +241,34 @@ model MerchantTag {
   @@map("merchant_tags")
 }
 
-/// Support inbox (in-house chat).
+/// Support inbox (in-house chat). SLA/priority + CSAT fields (cp-inbox-sla,
+/// cp-conversation-csat) are additive: defaults backfill existing rows.
 model Conversation {
   id            String     @id @default(cuid())
   appKey        String
   shop          String
   status        ConvStatus @default(OPEN)
-  assignedTo    String? // AdminUser id (manual assign in MVP)
+  assignedTo    String? // AdminUser id (rule-driven or manual assign)
   subject       String?
   unreadCount   Int        @default(0)
+  // Priority-keyed SLA (cp-inbox-sla). `NONE` ⇒ null due-times ⇒ never swept.
+  priority           Priority  @default(NONE)
+  slaState           SlaState  @default(ON_TRACK)
+  firstReplyAt       DateTime? // stamped once, on the first non-internal agent reply
+  firstResponseDueAt DateTime?
+  resolutionDueAt    DateTime?
+  // Post-close CSAT (cp-conversation-csat). Idempotent once scored.
+  csatScore     Int? // 1–5
+  csatComment   String?
   lastMessageAt DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
   messages Message[]
+  tags     ConversationTag[]
 
   @@index([appKey, status, lastMessageAt])
+  @@index([appKey, slaState, firstResponseDueAt])
   @@index([shop])
   @@map("conversations")
 }
@@ -141,6 +279,8 @@ model Message {
   senderType     SenderType
   senderId       String // shop or AdminUser id
   body           String
+  // Internal (agent-only) note (cp-canned-replies): never delivered to the merchant.
+  internal       Boolean    @default(false)
   attachmentUrl  String? // real HTTP(S) URL — never blob:
   createdAt      DateTime   @default(now())
 
@@ -161,4 +301,275 @@ model KpiSnapshot {
 
   @@index([appKey, metric, asOf])
   @@map("kpi_snapshots")
+}
+
+/// Control-plane-owned record of every ingested Shopify webhook
+/// (cp-webhook-ingestion). The unique `shopifyWebhookId` gives at-least-once
+/// dedupe; doubles as the failed-delivery log (roadmap §2.4). CP-owned => the
+/// architecture guard stays green.
+model WebhookEvent {
+  id               String        @id @default(cuid())
+  appKey           String
+  topic            String // "customers/redact", "app_subscriptions/update", ...
+  shopifyWebhookId String        @unique // dedupe: at-least-once delivery
+  shop             String?
+  hmacValid        Boolean
+  status           WebhookStatus @default(RECEIVED)
+  payload          Json
+  error            String?
+  // At-least-once reliability (cp-webhook-reliability). `contentHash` is a
+  // SHA-256 of the raw body — a secondary dedupe guard when a redelivery carries a
+  // fresh `shopifyWebhookId`. `attempts`/`lastAttemptAt` track processing for the
+  // dead-letter transition + the failed-delivery view. All additive/defaulted.
+  contentHash      String?
+  attempts         Int           @default(0)
+  lastAttemptAt    DateTime?
+  receivedAt       DateTime      @default(now())
+  processedAt      DateTime?
+
+  @@index([appKey, topic, receivedAt])
+  @@index([appKey, topic, contentHash])
+  @@index([status])
+  @@map("webhook_events")
+}
+
+/// Control-plane-owned, justified + time-boxed elevated-access grant
+/// (cp-break-glass-rbac). Gates PII reveal and impersonation: a typed `reason` is
+/// always required; sensitive scopes need ADMIN approval; `expiresAt` time-boxes it
+/// and the ops sweep flips it to `EXPIRED`. Every transition is audited in the same
+/// transaction. CP-owned => the architecture guard stays green.
+model BreakGlassGrant {
+  id             String           @id @default(cuid())
+  appKey         String
+  actorUserId    String // AdminUser id the grant is for
+  scope          BreakGlassScope
+  targetShop     String? // optional merchant scope (null => app-wide for the scope)
+  reason         String
+  status         BreakGlassStatus @default(REQUESTED)
+  approverUserId String? // AdminUser id who approved (sensitive scopes)
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([appKey, actorUserId, status])
+  @@index([status, expiresAt])
+  @@map("break_glass_grants")
+}
+
+/// A GDPR data-subject request driven by a Shopify compliance webhook
+/// (cp-compliance-dsr). `dueAt = receivedAt + 30d` drives the SLA timer; every
+/// state change is audited in the same transaction.
+model ComplianceRequest {
+  id             String           @id @default(cuid())
+  appKey         String
+  topic          ComplianceTopic
+  shop           String
+  status         ComplianceStatus @default(RECEIVED)
+  payload        Json // customer ids / data_request payload from Shopify
+  receivedAt     DateTime         @default(now())
+  dueAt          DateTime // receivedAt + 30 days — drives the SLA timer
+  dispatchedAt   DateTime? // when CP called the app admin API
+  completedAt    DateTime?
+  externalRef    String? // app's job/confirmation id
+  webhookEventId String?
+
+  @@index([status, dueAt]) // the "what's breaching" query
+  @@index([shop])
+  @@map("compliance_requests")
+}
+
+/// Control-plane-owned billing alert (cp-billing-monitoring). Raised when a
+/// merchant's usage approaches its capped amount. CP-owned => guard stays green.
+model BillingAlert {
+  id         String           @id @default(cuid())
+  appKey     String
+  shop       String
+  kind       BillingAlertKind @default(CAP_APPROACHING)
+  payload    Json
+  createdAt  DateTime         @default(now())
+  resolvedAt DateTime?
+
+  @@index([appKey, kind, createdAt])
+  @@index([shop])
+  @@map("billing_alerts")
+}
+
+/// Control-plane-owned canned reply / macro (cp-canned-replies). ADMIN-managed,
+/// SUPPORT-usable; `{{shop}}`/`{{merchant_name}}`/`{{agent_name}}` are substituted
+/// server-side at apply time. CP-owned => the architecture guard stays green.
+model CannedReply {
+  id        String   @id @default(cuid())
+  appKey    String
+  shortcut  String // e.g. "/welcome" — unique per app
+  title     String
+  body      String
+  createdBy String // AdminUser id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([appKey, shortcut])
+  @@index([appKey])
+  @@map("canned_replies")
+}
+
+/// Control-plane-owned, ordered conversation auto-assignment rule
+/// (cp-conversation-routing). Evaluated first-match-wins on new conversations.
+model AssignmentRule {
+  id          String         @id @default(cuid())
+  appKey      String
+  order       Int // lower runs first; first match wins
+  matchField  RuleMatchField
+  matchValue  String
+  assignTo    String? // AdminUser id to assign (presence-checked at apply time)
+  setPriority Priority?
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([appKey, active, order])
+  @@map("assignment_rules")
+}
+
+/// Control-plane-owned conversation tag (cp-conversation-csat). Mirrors MerchantTag;
+/// unique per conversation by label; a triage/search dimension.
+model ConversationTag {
+  id             String   @id @default(cuid())
+  appKey         String
+  conversationId String
+  label          String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, label])
+  @@index([appKey, label])
+  @@map("conversation_tags")
+}
+
+/// Pre-aggregated per-merchant health score (cp-merchant-health). Refreshed by the
+/// growth rollup; the 360 panel + at-risk list read the LATEST snapshot per shop —
+/// never a live join. `factors` holds the score breakdown. CP-owned (merchant
+/// business data stays replica-only-read) => the architecture guard stays green.
+model MerchantHealthSnapshot {
+  id        String     @id @default(cuid())
+  appKey    String
+  shop      String
+  score     Float
+  band      HealthBand
+  factors   Json
+  asOf      DateTime
+  createdAt DateTime   @default(now())
+
+  @@index([appKey, shop, asOf])
+  @@map("merchant_health_snapshots")
+}
+
+/// Control-plane-owned merchant lifecycle event (cp-uninstall-churn). Driven by the
+/// `app/uninstalled` webhook (+ inferred reinstall); feeds churn KPIs and the health
+/// signal. CP-owned => the architecture guard stays green.
+model MerchantLifecycleEvent {
+  id         String        @id @default(cuid())
+  appKey     String
+  shop       String
+  kind       LifecycleKind
+  reason     String?
+  occurredAt DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+
+  @@index([appKey, shop, occurredAt])
+  @@index([appKey, kind, occurredAt])
+  @@map("merchant_lifecycle_events")
+}
+
+/// Control-plane-owned boolean feature flag (cp-feature-flags). The app READS its
+/// flags via a narrow authenticated endpoint; the control plane never writes flags
+/// into the app DB. `rolloutPercentage` drives a deterministic per-shop bucket;
+/// per-shop overrides (FeatureFlagOverride) win over it. CP-owned => guard green.
+model FeatureFlag {
+  id                String   @id @default(cuid())
+  appKey            String
+  key               String
+  description       String?
+  defaultEnabled    Boolean  @default(false)
+  rolloutPercentage Int? // 0–100; null => default-only (no staged ramp)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([appKey, key])
+  @@map("feature_flags")
+}
+
+/// Per-shop override of a feature flag (cp-feature-flags). Forces a flag on/off for
+/// one merchant, taking precedence over the default + percentage rollout.
+model FeatureFlagOverride {
+  id        String   @id @default(cuid())
+  appKey    String
+  flagKey   String
+  shop      String
+  enabled   Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([appKey, flagKey, shop])
+  @@index([appKey, shop])
+  @@map("feature_flag_overrides")
+}
+
+/// Control-plane-owned in-app announcement (cp-announcements-nps). Broadcast to
+/// connected embedded widgets over the chat gateway; a `SYSTEM` message is persisted
+/// per targeted conversation so it appears in history. CP-owned => guard green.
+model Announcement {
+  id            String               @id @default(cuid())
+  appKey        String
+  title         String
+  body          String
+  audience      AnnouncementAudience @default(ALL)
+  audienceValue String? // plan name (PLAN) or comma-separated shops (SHOP_LIST)
+  createdBy     String // AdminUser id
+  publishedAt   DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([appKey, publishedAt])
+  @@map("announcements")
+}
+
+/// Control-plane-owned NPS response (cp-announcements-nps). Collected through the
+/// widget (the CSAT pattern); idempotent within a survey window; rolled into a
+/// `KpiSnapshot` `nps` metric. CP-owned => the architecture guard stays green.
+model NpsResponse {
+  id             String   @id @default(cuid())
+  appKey         String
+  shop           String
+  conversationId String?
+  score          Int // 0–10
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  @@index([appKey, shop, createdAt])
+  @@map("nps_responses")
+}
+
+/// Control-plane-owned record of a merchant-requested plan change
+/// (cp-self-serve-billing). The control plane records + dispatches to the narrow
+/// SaleSwitch admin API (which performs the Shopify managed-pricing mutation) — it
+/// NEVER mutates billing or the app DB directly. CP-owned => guard green.
+model PlanChangeRequest {
+  id              String           @id @default(cuid())
+  appKey          String
+  shop            String
+  fromPlan        String?
+  toPlan          String
+  status          PlanChangeStatus @default(REQUESTED)
+  confirmationUrl String? // Shopify managed-pricing confirmation URL from the app
+  externalRef     String? // app's job/confirmation id
+  conversationId  String? // set when the no-admin-API fallback opens a ticket
+  error           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([appKey, shop, createdAt])
+  @@index([status])
+  @@map("plan_change_requests")
 }

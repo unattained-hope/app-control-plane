@@ -16,10 +16,22 @@ import { getConfig } from "./config.js";
 export interface SecretsManager {
   /** Resolve a replica DSN for a registry `replicaRef`. Throws if unknown. */
   resolveReplicaUrl(replicaRef: string): Promise<string>;
+  /**
+   * Resolve the Shopify webhook-signing secret for a registry `webhookSecretRef`
+   * (cp-webhook-ingestion). MVP single-tenant reuses the app's `SHOPIFY_API_SECRET`;
+   * multi-app stores one ref per registered app. Throws on an unknown ref.
+   */
+  resolveWebhookSecret(webhookSecretRef: string): Promise<string>;
 }
 
-/** The single known ref in the MVP. Stored on the seeded App row. */
+/** The single known replica ref in the MVP. Stored on the seeded App row. */
 export const SALESWITCH_REPLICA_REF = "secret:saleswitch/replica-readonly";
+
+/**
+ * The canonical webhook-secret ref for the single MVP tenant. Multi-app stores a
+ * per-app `webhookSecretRef` on the registry row (mirroring `replicaRef`).
+ */
+export const SALESWITCH_WEBHOOK_SECRET_REF = "secret:saleswitch/webhook-signing";
 
 class EnvBackedSecretsManager implements SecretsManager {
   async resolveReplicaUrl(replicaRef: string): Promise<string> {
@@ -29,6 +41,17 @@ class EnvBackedSecretsManager implements SecretsManager {
     throw new Error(
       `Unknown replicaRef "${replicaRef}" — no secret binding. The connector will ` +
         `NOT fall back to a primary or raw DSN connection.`,
+    );
+  }
+
+  async resolveWebhookSecret(webhookSecretRef: string): Promise<string> {
+    if (webhookSecretRef === SALESWITCH_WEBHOOK_SECRET_REF) {
+      // Single-tenant MVP: Shopify signs app webhooks with the app's API secret.
+      return getConfig().SHOPIFY_API_SECRET;
+    }
+    throw new Error(
+      `Unknown webhookSecretRef "${webhookSecretRef}" — no secret binding. ` +
+        `Webhook verification fails closed rather than accepting an unsigned event.`,
     );
   }
 }

@@ -9,6 +9,10 @@ import {
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
 import type { AppRouter } from "~/server/trpc/root.js";
+import { AuditActions } from "~/lib/auditActions.js";
+
+/** The known audit action taxonomy, surfaced as filter suggestions (cp-audit-taxonomy). */
+const KNOWN_ACTIONS = Object.values(AuditActions).sort();
 
 /**
  * Audit log viewer (cp-audit-log). Read-only and ADMIN-only: the `audit:view`
@@ -35,6 +39,8 @@ interface AuditFilters {
   readonly appKey: string;
   readonly merchantShop: string;
   readonly action: string;
+  readonly actorType: "" | "INTERNAL" | "SYSTEM";
+  readonly source: "" | "UI" | "API" | "JOB";
   readonly from: string; // datetime-local value (local time) or ""
   readonly to: string; // datetime-local value (local time) or ""
 }
@@ -44,6 +50,8 @@ const EMPTY_FILTERS: AuditFilters = {
   appKey: "",
   merchantShop: "",
   action: "",
+  actorType: "",
+  source: "",
   from: "",
   to: "",
 };
@@ -105,7 +113,18 @@ const columns = [
   }),
   columnHelper.accessor("actorUserId", {
     header: "Actor",
-    cell: (info) => info.getValue() || "—",
+    cell: (info) => {
+      const row = info.row.original;
+      return row.actorEmail || info.getValue() || "—";
+    },
+  }),
+  columnHelper.accessor("actorType", {
+    header: "Actor type",
+    cell: (info) => info.getValue(),
+  }),
+  columnHelper.accessor("source", {
+    header: "Source",
+    cell: (info) => info.getValue(),
   }),
   columnHelper.accessor("action", {
     header: "Action",
@@ -153,6 +172,8 @@ export default function Audit() {
       appKey: applied.appKey.trim() || undefined,
       merchantShop: applied.merchantShop.trim() || undefined,
       action: applied.action.trim() || undefined,
+      actorType: applied.actorType || undefined,
+      source: applied.source || undefined,
       from: localInputToDate(applied.from),
       to: localInputToDate(applied.to),
       limit: RESULT_LIMIT,
@@ -280,10 +301,47 @@ export default function Audit() {
             <input
               id="audit-action"
               type="text"
+              list="audit-action-options"
               value={draft.action}
-              placeholder="e.g. note.add"
+              placeholder="e.g. webhook.replayed"
               onChange={(event) => updateDraft("action", event.target.value)}
             />
+            <datalist id="audit-action-options">
+              {KNOWN_ACTIONS.map((a) => (
+                <option key={a} value={a} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="apoaap-audit-field">
+            <label htmlFor="audit-actor-type">Actor type</label>
+            <select
+              id="audit-actor-type"
+              value={draft.actorType}
+              onChange={(event) =>
+                updateDraft("actorType", event.target.value as AuditFilters["actorType"])
+              }
+            >
+              <option value="">Any</option>
+              <option value="INTERNAL">Internal (staff)</option>
+              <option value="SYSTEM">System (job)</option>
+            </select>
+          </div>
+
+          <div className="apoaap-audit-field">
+            <label htmlFor="audit-source">Source</label>
+            <select
+              id="audit-source"
+              value={draft.source}
+              onChange={(event) =>
+                updateDraft("source", event.target.value as AuditFilters["source"])
+              }
+            >
+              <option value="">Any</option>
+              <option value="UI">UI</option>
+              <option value="API">API</option>
+              <option value="JOB">Job</option>
+            </select>
           </div>
 
           <div className="apoaap-audit-field">

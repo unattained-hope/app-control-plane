@@ -16,6 +16,10 @@ export class PresenceTracker {
   anyAgentOnline(): boolean {
     return this.online.size > 0;
   }
+  /** Whether a specific agent is online — drives presence-aware routing. */
+  isOnline(agentUserId: string): boolean {
+    return this.online.has(agentUserId);
+  }
   onlineCount(): number {
     return this.online.size;
   }

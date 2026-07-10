@@ -15,6 +15,14 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter, createContext } from "./trpc/root.js";
 import { attachChatGateway } from "./realtime/chatGateway.js";
 import { startKpiWorker } from "./workers/kpiRollup.js";
+import { startWebhookWorker } from "./workers/webhookProcess.js";
+import {
+  scheduleComplianceSweep,
+  startComplianceSweepWorker,
+} from "./workers/complianceSweep.js";
+import { scheduleSlaSweep, startSlaWorker } from "./workers/slaSweep.js";
+import { scheduleOpsRollup, startOpsRollupWorker } from "./workers/opsRollup.js";
+import { scheduleGrowthRollup, startGrowthRollupWorker } from "./workers/growthRollup.js";
 import { initObservability } from "./lib/observability.js";
 
 initObservability("web");
@@ -52,6 +60,42 @@ attachChatGateway(httpServer);
 
 // BullMQ KPI rollup worker in-process.
 startKpiWorker();
+
+// BullMQ Shopify-webhook worker (compliance + billing fan-out) in-process.
+startWebhookWorker();
+
+// GDPR/DSR SLA sweep: start the worker + schedule the repeatable job that flags
+// requests nearing their 30-day due date.
+startComplianceSweepWorker();
+scheduleComplianceSweep("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule compliance SLA sweep:", err);
+});
+
+// Support-desk SLA sweep: flags conversations breaching their first-response /
+// resolution timers (cp-inbox-sla).
+startSlaWorker();
+scheduleSlaSweep("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule support SLA sweep:", err);
+});
+
+// Ops rollup: persists ops KPIs, evaluates SLO burn-rate, sweeps expired break-glass
+// grants (cp-ops-monitoring / cp-slo-alerting / cp-break-glass-rbac).
+startOpsRollupWorker();
+scheduleOpsRollup("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule ops rollup:", err);
+});
+
+// Growth rollup: per-merchant health snapshots, reinstall inference, and the growth
+// KPIs (nps / churned / at-risk) — cp-merchant-health / cp-uninstall-churn /
+// cp-announcements-nps.
+startGrowthRollupWorker();
+scheduleGrowthRollup("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule growth rollup:", err);
+});
 
 const port = process.env.PORT || 3000;
 httpServer.listen(port, () => {

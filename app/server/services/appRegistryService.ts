@@ -1,6 +1,7 @@
 import type { AdminIdentity } from "../auth.js";
 import { getDb } from "../db.js";
 import { getAuditService } from "./auditService.js";
+import { AuditActions } from "~/lib/auditActions.js";
 import type { Role } from "@prisma/client";
 
 /**
@@ -50,8 +51,9 @@ export class AppRegistryService {
       await this.audit.append(
         {
           actorUserId: actor.id,
+          actorEmail: actor.email,
           appKey: "_platform",
-          action: "user.role.change",
+          action: AuditActions.UserRoleChange,
           target: targetUserId,
           before: { role: before },
           after: { role: newRole },

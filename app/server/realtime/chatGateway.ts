@@ -4,8 +4,13 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { Redis } from "ioredis";
 import { getConfig } from "~/lib/config.js";
 import { getConversationService } from "../services/conversationService.js";
+import { getRoutingService } from "../services/routingService.js";
+import { getCsatService } from "../services/csatService.js";
+import { getNpsService } from "../services/npsService.js";
+import { setChatBroadcaster } from "../services/announcementService.js";
 import { getPresence } from "./presence.js";
 import { verifyShopToken, isAllowedOrigin } from "./sessionToken.js";
+import { captureError } from "~/lib/observability.js";
 import type { Role } from "@prisma/client";
 
 /**
@@ -35,6 +40,10 @@ export function attachChatGateway(httpServer: HttpServer): Server {
   const pub = new Redis(getConfig().REDIS_URL, { lazyConnect: true });
   const sub = pub.duplicate();
   io.adapter(createAdapter(pub, sub));
+
+  // Let the announcement service broadcast over this gateway (Redis-fanned to every
+  // connected widget across instances) — cp-announcements-nps.
+  setChatBroadcaster(io);
 
   const conversations = getConversationService();
   const presence = getPresence();
@@ -95,7 +104,9 @@ export function attachChatGateway(httpServer: HttpServer): Server {
       const convo = await conversations.getOrCreateForShop(auth.appKey, auth.shop);
       void socket.join(roomFor(convo.id));
       socket.emit("conversation", { id: convo.id });
-      const history = await conversations.history(convo.id);
+      // Merchant-facing history NEVER includes internal notes (cp-canned-replies):
+      // filtered at the server, not the widget.
+      const history = await conversations.merchantHistory(convo.id);
       socket.emit("history", history);
     });
 
@@ -111,10 +122,61 @@ export function attachChatGateway(httpServer: HttpServer): Server {
         });
         io.to(roomFor(payload.conversationId)).emit("message", msg);
 
+        // Rule-based routing keyed off the merchant's message (cp-conversation-
+        // routing). Idempotent — only an unrouted conversation is routed — so this
+        // catches keyword rules that need the first message body. Best-effort.
+        try {
+          await getRoutingService().applyToNewConversation(auth.appKey, payload.conversationId, {
+            shop: auth.shop,
+            firstMessageBody: payload.body,
+          });
+        } catch (err) {
+          captureError(err, { where: "chatGateway.routing", shop: auth.shop });
+        }
+
         // Offline fallback (AC7.6): no agent online => email fallback + queue.
         if (!presence.anyAgentOnline()) {
           const fallback = await conversations.recordEmailFallback(payload.conversationId);
           socket.emit("message", fallback);
+        }
+      },
+    );
+
+    // Post-close CSAT submission via the widget transport (cp-conversation-csat).
+    socket.on(
+      "merchant:csat",
+      async (payload: { conversationId: string; score: number; comment?: string }) => {
+        try {
+          const result = await getCsatService().record(
+            payload.conversationId,
+            payload.score,
+            payload.comment ?? null,
+          );
+          socket.emit("csat:ack", { recorded: result.recorded });
+        } catch (err) {
+          captureError(err, { where: "chatGateway.csat", shop: auth.shop });
+          socket.emit("csat:ack", { recorded: false });
+        }
+      },
+    );
+
+    // NPS submission via the widget transport (cp-announcements-nps). Mirrors CSAT:
+    // shop-scoped, idempotent within the survey window, acknowledged like csat:ack.
+    socket.on(
+      "merchant:nps",
+      async (payload: { conversationId?: string; score: number; comment?: string }) => {
+        try {
+          const result = await getNpsService().record(
+            auth.appKey,
+            auth.shop,
+            payload.conversationId ?? null,
+            payload.score,
+            payload.comment ?? null,
+          );
+          socket.emit("nps:ack", { recorded: result.recorded });
+        } catch (err) {
+          captureError(err, { where: "chatGateway.nps", shop: auth.shop });
+          socket.emit("nps:ack", { recorded: false });
         }
       },
     );
