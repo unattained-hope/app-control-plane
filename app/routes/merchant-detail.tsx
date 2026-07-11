@@ -144,7 +144,7 @@ function RevealableEmail({
         </Button>
       </div>
       {reveal.isError ? (
-        <Text className="text-xs text-rose-600" role="alert">
+        <Text className="text-xs text-cp-danger" role="alert">
           {reveal.error.message}
         </Text>
       ) : null}
@@ -346,9 +346,9 @@ function BillingCard({ shop }: { readonly shop: string }) {
         <div
           role="status"
           aria-label="Subscription data is stale"
-          className="mt-2 rounded border border-amber-300 bg-amber-50 px-2 py-1"
+          className="mt-2 apoaap-callout-note px-2 py-1"
         >
-          <Text className="text-xs text-amber-800">
+          <Text className="text-xs text-cp-note-text">
             Live billing read failed — showing the last known value, which may be
             out of date.
           </Text>
@@ -463,7 +463,7 @@ function TagsCard({
           Add tag
         </Button>
         {addTag.isError ? (
-          <Text className="mt-2 text-xs text-rose-600" role="alert">
+          <Text className="mt-2 text-xs text-cp-danger" role="alert">
             {addTag.error.message}
           </Text>
         ) : null}
@@ -568,7 +568,7 @@ function NotesCard({
           Add note
         </Button>
         {addNote.isError ? (
-          <Text className="mt-2 text-xs text-rose-600" role="alert">
+          <Text className="mt-2 text-xs text-cp-danger" role="alert">
             {addNote.error.message}
           </Text>
         ) : null}
@@ -612,7 +612,7 @@ function ConversationHistoryCard({
                     </Badge>
                   ) : null}
                   {c.csatScore != null ? (
-                    <Text className="text-xs text-emerald-700">CSAT {c.csatScore}/5</Text>
+                    <Text className="text-xs text-cp-success-text">CSAT {c.csatScore}/5</Text>
                   ) : null}
                 </Flex>
                 <Text className="text-xs text-tremor-content-subtle">

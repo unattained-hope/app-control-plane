@@ -111,7 +111,7 @@ function RuleForm({ onCreated }: { readonly onCreated: () => void }) {
         </div>
       </form>
       {create.isError ? (
-        <Text className="mt-2 text-xs text-rose-600" role="alert">
+        <Text className="mt-2 text-xs text-cp-danger" role="alert">
           {create.error.message}
         </Text>
       ) : null}

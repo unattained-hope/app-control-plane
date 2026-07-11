@@ -4,15 +4,17 @@
 #
 # What it does, in order:
 #   1. Makes sure the control-plane Postgres (Docker) is up on :5544
-#   2. Ensures .env exists and deps are installed
-#   3. Syncs the Prisma schema + seeds the App registry (both idempotent)
-#   4. Kills any stale dev server holding the port, then starts a fresh one
+#   2. Makes sure Redis (Docker) is up on :6379 (chat Socket.IO + BullMQ workers)
+#   3. Ensures .env exists and deps are installed
+#   4. Syncs the Prisma schema + seeds the App registry (both idempotent)
+#   5. Kills any stale dev server holding the port, then starts a fresh one
 #
 # Badgy/SaleSwitch does NOT need to run — its data is served by an in-memory
-# fixture (see app/server/connectors/registry.ts). Redis is not needed for `dev`.
+# fixture (see app/server/connectors/registry.ts). Badgy's Redis is on :6380;
+# this script starts a separate Redis on :6379 for the control plane.
 #
 # Usage:  ./scripts/dev-up.sh        (run from anywhere; logs stream to your terminal)
-# Stop:   Ctrl-C                     (stops the dev server; Postgres stays up)
+# Stop:   Ctrl-C                     (stops the dev server; Postgres + Redis stay up)
 
 set -euo pipefail  # -e: exit on any error · -u: error on unset vars · -o pipefail: fail a pipe if any stage fails
 
@@ -24,6 +26,9 @@ PG_USER="${PG_USER:-cp}"                # Postgres user (matches .env DSN)
 PG_PASS="${PG_PASS:-cp}"                # Postgres password (matches .env DSN)
 PG_DB="${PG_DB:-control_plane}"         # Postgres database name (matches .env DSN)
 PG_IMAGE="${PG_IMAGE:-postgres:16}"     # Postgres image tag
+REDIS_CONTAINER="${REDIS_CONTAINER:-cp-redis}"  # name of the Redis Docker container
+REDIS_PORT="${REDIS_PORT:-6379}"                # host port mapped to Redis (matches .env REDIS_URL)
+REDIS_IMAGE="${REDIS_IMAGE:-redis:7.2-alpine}"  # Redis image tag
 
 # Resolve the repo root from this script's own location, so it works no matter
 # what directory you invoke it from.
@@ -82,7 +87,31 @@ for i in $(seq 1 30); do                                                   # up 
   sleep 1
 done
 
-# ── 2. Env file + dependencies ────────────────────────────────────────────────
+# ── 2. Redis (chat Socket.IO adapter + BullMQ) ──────────────────────────────
+log "Ensuring Redis container '${REDIS_CONTAINER}' is running on :${REDIS_PORT}"
+
+if docker ps --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER"; then
+  log "Redis already running — reusing it."
+elif docker ps -a --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER"; then
+  log "Starting existing Redis container."
+  docker start "$REDIS_CONTAINER" >/dev/null
+else
+  log "Creating Redis container."
+  docker run -d --name "$REDIS_CONTAINER" \
+    -p "${REDIS_PORT}:6379" "$REDIS_IMAGE" >/dev/null
+fi
+
+log "Waiting for Redis to accept connections…"
+for i in $(seq 1 30); do
+  if docker exec "$REDIS_CONTAINER" redis-cli ping 2>/dev/null | grep -qx PONG; then
+    log "Redis is ready."
+    break
+  fi
+  [ "$i" -eq 30 ] && { echo "✖ Redis did not become ready in time."; exit 1; }
+  sleep 1
+done
+
+# ── 3. Env file + dependencies ────────────────────────────────────────────────
 if [ ! -f .env ]; then                       # no .env yet?
   log "Creating .env from .env.example (placeholders pass config validation)."
   cp .env.example .env
@@ -95,7 +124,7 @@ else
   log "Dependencies already installed — skipping npm install."
 fi
 
-# ── 3. Prisma schema + seed (both idempotent, safe to re-run) ─────────────────
+# ── 4. Prisma schema + seed (both idempotent, safe to re-run) ─────────────────
 log "Generating Prisma client."
 npx prisma generate                          # regenerate the typed client from schema.prisma
 
@@ -105,7 +134,7 @@ npx prisma db push                           # create/update tables to match sch
 log "Seeding the App registry (upsert — safe to repeat)."
 npm run seed                                 # inserts/updates the 'saleswitch' registry row
 
-# ── 4. (Re)start the dev server ───────────────────────────────────────────────
+# ── 5. (Re)start the dev server ───────────────────────────────────────────────
 free_port "$DEV_PORT"                         # stop any previous dev server still holding the port
 
 log "Starting dev server → http://localhost:${DEV_PORT}"

@@ -82,7 +82,7 @@ export default function Announcements() {
             Publish to all merchants
           </Button>
           {publish.isError ? (
-            <Text className="mt-2 text-xs text-rose-600" role="alert">
+            <Text className="mt-2 text-xs text-cp-danger" role="alert">
               {publish.error.message}
             </Text>
           ) : null}

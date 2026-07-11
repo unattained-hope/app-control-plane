@@ -10,6 +10,7 @@ import { trpc } from "~/lib/trpc.js";
 import { getConfig } from "~/lib/config.js";
 import { getWorkOs, resolveIdentity } from "~/server/auth.js";
 import { resolveDevIdentity } from "~/server/devSession.js";
+import { ThemeToggle } from "~/components/ThemeToggle.js";
 
 /**
  * Auth gate for every shell-wrapped (authed) route. Without a resolved identity
@@ -56,7 +57,13 @@ export default function AppShell() {
           </span>
           <span className="apoaap-shell-title">Apoaap Control Plane</span>
         </div>
-        <AppSelector />
+        <div className="apoaap-shell-header-actions">
+          <ThemeToggle />
+          <AppSelector />
+          <span className="apoaap-role-badge" title="Your role">
+            {role}
+          </span>
+        </div>
       </header>
 
       <div className="apoaap-shell-body">
@@ -153,6 +160,7 @@ function AppSelector() {
       </label>
       <select
         id="apoaap-app-select"
+        className="apoaap-app-select"
         aria-label="Select app"
         defaultValue={apps[0]?.key}
         disabled={apps.length === 1}

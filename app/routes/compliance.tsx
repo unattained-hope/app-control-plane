@@ -120,7 +120,7 @@ function MarkFulfilled({ row, onDone }: { row: ComplianceRow; onDone: () => void
         </Button>
       </div>
       {markCompleted.isError ? (
-        <Text className="text-xs text-rose-600" role="alert">
+        <Text className="text-xs text-cp-danger" role="alert">
           {markCompleted.error.message}
         </Text>
       ) : null}

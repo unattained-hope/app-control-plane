@@ -5,11 +5,12 @@ import type { Config } from "tailwindcss";
  *
  * - `content` MUST include the @tremor/react package or its classes are purged
  *   in the production build (cp-visual-design D5).
- * - `colors.cp.*` are the muted-Badgy tokens (CSS variables in app/styles/tokens.css).
+ * - `colors.cp.*` are Filament-aligned tokens (CSS variables in app/styles/tokens.css).
  * - `colors.tremor.*` map Tremor's component classes onto the SAME tokens, so the
  *   custom `apoaap-*` CSS and Tremor read one palette.
  */
 export default {
+  darkMode: "class",
   content: [
     "./app/**/*.{ts,tsx}",
     "./node_modules/@tremor/react/**/*.{js,mjs}",
@@ -17,7 +18,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Muted-Badgy tokens.
+        // Filament orange + gray tokens.
         cp: {
           bg: "var(--cp-bg)",
           surface: "var(--cp-surface)",
@@ -32,8 +33,15 @@ export default {
           "ok": "var(--cp-ok)",
           "warn": "var(--cp-warn)",
           "danger": "var(--cp-danger)",
+          "note-bg": "var(--cp-note-bg)",
+          "note-border": "var(--cp-note-border)",
+          "note-text": "var(--cp-note-text)",
+          "note-text-muted": "var(--cp-note-text-muted)",
+          "success-bg": "var(--cp-success-bg)",
+          "success-border": "var(--cp-success-border)",
+          "success-text": "var(--cp-success-text)",
         },
-        // Tremor palette mapped onto the muted tokens.
+        // Tremor palette mapped onto the same tokens.
         tremor: {
           brand: {
             faint: "var(--cp-accent-subtle)",

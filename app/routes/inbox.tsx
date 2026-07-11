@@ -304,19 +304,19 @@ function MessageBubble({ message }: { readonly message: ChatMessage }) {
   if (message.internal) {
     return (
       <li
-        className="mx-auto w-full rounded border border-amber-300 bg-amber-50 px-3 py-2"
+        className="mx-auto w-full apoaap-callout-note px-3 py-2"
         aria-label="Internal note"
       >
         <Flex justifyContent="between" alignItems="baseline" className="gap-3">
-          <Text className="text-xs font-medium text-amber-800">
+          <Text className="text-xs font-medium text-cp-note-text">
             Internal note
-            <span className="text-amber-700"> · {message.senderId}</span>
+            <span className="text-cp-note-text-muted"> · {message.senderId}</span>
           </Text>
-          <Text className="text-xs text-amber-700">
+          <Text className="text-xs text-cp-note-text-muted">
             <time dateTime={message.createdAt}>{formatTimestamp(message.createdAt)}</time>
           </Text>
         </Flex>
-        <Text className="mt-1 whitespace-pre-wrap text-amber-900">{message.body}</Text>
+        <Text className="mt-1 whitespace-pre-wrap text-cp-note-text">{message.body}</Text>
       </li>
     );
   }
@@ -385,7 +385,7 @@ function PrioritySelect({
         ))}
       </Select>
       {setPriority.isError ? (
-        <Text className="mt-1 text-xs text-rose-600" role="alert">
+        <Text className="mt-1 text-xs text-cp-danger" role="alert">
           {setPriority.error.message}
         </Text>
       ) : null}
@@ -569,8 +569,8 @@ function ConversationDetail({ conversation }: { readonly conversation: Conversat
       </Flex>
 
       {conversation.csatScore != null ? (
-        <div className="mt-2 rounded border border-emerald-300 bg-emerald-50 px-2 py-1">
-          <Text className="text-xs text-emerald-800" aria-label={`CSAT score ${conversation.csatScore} of 5`}>
+        <div className="mt-2 apoaap-callout-success px-2 py-1">
+          <Text className="text-xs text-cp-success-text" aria-label={`CSAT score ${conversation.csatScore} of 5`}>
             CSAT: {conversation.csatScore}/5
           </Text>
         </div>

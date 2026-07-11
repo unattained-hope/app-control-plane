@@ -1,41 +1,92 @@
 /*
- * Muted-Badgy design tokens (cp-visual-design). Single source of truth — Tailwind
- * theme keys (cp.* and tremor.*) and the apoaap-* component CSS both read these.
+ * Filament-aligned design tokens (cp-visual-design).
  *
- * Derived from Badgy's brand orange (#FF8C00 / #FFB566 / #7A3B00) but MUTED for an
- * information-first internal admin: a desaturated warm-amber accent used sparingly,
- * warm-neutral surfaces, warm-charcoal text. All text/accent values verified for
- * WCAG 2.1 AA contrast on their surfaces (see tasks 1.4 / 5.1).
+ * Palette matches Filament's default Color::Orange primary + Color::Gray surfaces:
+ * - Light: white cards on gray-50, orange-600 actions/links
+ * - Dark: gray-950/900 surfaces, orange-500/400 accents
+ *
+ * Values are Tailwind v3 hex equivalents from Filament\Support\Colors\Color.
+ * Tailwind `cp.*` / `tremor.*` keys and `apoaap-*` CSS both read these variables.
  */
 :root {
-  /* Surfaces — warm neutrals, NOT the saturated cream. */
-  --cp-bg: #fbfaf8; /* app background, warm off-white */
-  --cp-surface: #ffffff; /* cards, table, header */
-  --cp-surface-2: #f6f4f1; /* thead, subtle panels */
-  --cp-border: #e7e3dd; /* warm-gray dividers */
+  color-scheme: light;
 
-  /* Text — warm charcoal scale (16.3 / 5.9 / 3.2 : 1 on surface). */
-  --cp-text: #241f1b;
-  --cp-text-muted: #6b635b;
-  --cp-text-subtle: #9a8f84;
+  /* Surfaces — Filament gray + white */
+  --cp-bg: #f9fafb; /* gray-50 */
+  --cp-surface: #ffffff; /* white — cards, header, sidebar */
+  --cp-surface-2: #f3f4f6; /* gray-100 — table headers, panels */
+  --cp-border: #e5e7eb; /* gray-200 */
 
-  /* Accent — muted amber, restrained use only.
-     Text/link accent passes AA (4.7:1 on white); the lighter bar/marker accent is
-     for non-text UI cues (>=3:1). */
-  --cp-accent: #a8631f; /* links, active nav text, primary action — AA text */
-  --cp-accent-hover: #8f5114; /* hover/pressed */
-  --cp-accent-bar: #c77a33; /* active-nav indicator bar, focus ring (non-text) */
-  --cp-accent-subtle: #f7eee3; /* faint wash: active-nav bg, selected row */
+  /* Text — gray scale */
+  --cp-text: #111827; /* gray-900 */
+  --cp-text-muted: #4b5563; /* gray-600 */
+  --cp-text-subtle: #9ca3af; /* gray-400 */
 
-  /* Semantic (muted, AA as badge text on white). */
-  --cp-ok: #3f7a52;
-  --cp-warn: #946514;
-  --cp-danger: #b0453c;
+  /* Primary — Filament Color::Orange */
+  --cp-accent: #ea580c; /* orange-600 — links, buttons, active nav */
+  --cp-accent-hover: #c2410c; /* orange-700 */
+  --cp-accent-bar: #f97316; /* orange-500 — focus ring */
+  --cp-accent-subtle: #fff7ed; /* orange-50 — active nav, row hover */
 
-  /* Shape / depth / type. */
+  /* Semantic — Filament defaults (Emerald success, Rose danger, Orange warn) */
+  --cp-ok: #059669; /* emerald-600 */
+  --cp-warn: #ea580c; /* orange-600 */
+  --cp-danger: #e11d48; /* rose-600 */
+
+  /* Callouts — orange warning notes, emerald success */
+  --cp-note-bg: #fff7ed; /* orange-50 */
+  --cp-note-border: #fed7aa; /* orange-200 */
+  --cp-note-text: #9a3412; /* orange-800 */
+  --cp-note-text-muted: #c2410c; /* orange-700 */
+  --cp-success-bg: #ecfdf5; /* emerald-50 */
+  --cp-success-border: #a7f3d0; /* emerald-200 */
+  --cp-success-text: #065f46; /* emerald-800 */
+
+  /* Shape / depth / type */
   --cp-radius-sm: 0.5rem;
   --cp-radius: 0.75rem;
-  --cp-shadow-card: 0 1px 2px rgba(36, 31, 27, 0.04), 0 1px 3px rgba(36, 31, 27, 0.06);
+  --cp-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --cp-shadow-header: 0 1px 0 rgb(0 0 0 / 0.05);
   --cp-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
+
+  --cp-transition: 150ms ease;
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Surfaces — Filament dark (gray-950 canvas, gray-900 cards) */
+  --cp-bg: #030712; /* gray-950 */
+  --cp-surface: #111827; /* gray-900 */
+  --cp-surface-2: #1f2937; /* gray-800 */
+  --cp-border: #374151; /* gray-700 */
+
+  /* Text */
+  --cp-text: #f9fafb; /* gray-50 */
+  --cp-text-muted: #9ca3af; /* gray-400 */
+  --cp-text-subtle: #6b7280; /* gray-500 */
+
+  /* Primary — brighter orange on dark surfaces */
+  --cp-accent: #f97316; /* orange-500 */
+  --cp-accent-hover: #fb923c; /* orange-400 */
+  --cp-accent-bar: #f97316; /* orange-500 */
+  --cp-accent-subtle: rgb(249 115 22 / 0.12); /* orange-500 tint */
+
+  /* Semantic */
+  --cp-ok: #34d399; /* emerald-400 */
+  --cp-warn: #fb923c; /* orange-400 */
+  --cp-danger: #fb7185; /* rose-400 */
+
+  /* Callouts */
+  --cp-note-bg: rgb(249 115 22 / 0.1);
+  --cp-note-border: #9a3412; /* orange-800 */
+  --cp-note-text: #fed7aa; /* orange-200 */
+  --cp-note-text-muted: #fdba74; /* orange-300 */
+  --cp-success-bg: rgb(16 185 129 / 0.1);
+  --cp-success-border: #065f46; /* emerald-800 */
+  --cp-success-text: #6ee7b7; /* emerald-300 */
+
+  --cp-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.35);
+  --cp-shadow-header: 0 1px 0 rgb(0 0 0 / 0.25);
 }

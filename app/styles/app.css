@@ -11,6 +11,9 @@
     color: var(--cp-text);
     font-family: var(--cp-font-sans);
     -webkit-font-smoothing: antialiased;
+    transition:
+      background-color var(--cp-transition),
+      color var(--cp-transition);
   }
   body {
     margin: 0;
@@ -58,10 +61,20 @@
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    height: 56px;
+    height: 3.5rem;
     padding: 0 1.25rem;
     background: var(--cp-surface);
     border-bottom: 1px solid var(--cp-border);
+    box-shadow: var(--cp-shadow-header);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .apoaap-shell-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-left: auto;
   }
   .apoaap-shell-brand {
     display: flex;
@@ -72,8 +85,15 @@
     white-space: nowrap;
   }
   .apoaap-shell-logo {
-    color: var(--cp-accent);
-    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--cp-radius-sm);
+    background: var(--cp-accent);
+    color: #ffffff;
+    font-size: 0.85rem;
     line-height: 1;
   }
   .apoaap-shell-title {
@@ -86,7 +106,7 @@
     min-height: 0;
   }
   .apoaap-shell-nav {
-    width: 200px;
+    width: 13.5rem;
     flex-shrink: 0;
     padding: 1rem 0.75rem;
     background: var(--cp-surface);
@@ -104,9 +124,69 @@
     flex: 1;
     min-width: 0;
     overflow: auto;
+    background: var(--cp-bg);
   }
 
-  /* ── Nav links (neutral default, accent active) ─────────────────────── */
+  /* ── Role badge ─────────────────────────────────────────────────────── */
+  .apoaap-role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--cp-text-muted);
+    background: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+  }
+
+  /* ── Theme toggle ───────────────────────────────────────────────────── */
+  .apoaap-theme-toggle {
+    display: inline-flex;
+    align-items: stretch;
+    padding: 0.125rem;
+    border-radius: var(--cp-radius-sm);
+    background: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+    gap: 0.125rem;
+  }
+  .apoaap-theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    border: none;
+    border-radius: calc(var(--cp-radius-sm) - 2px);
+    background: transparent;
+    color: var(--cp-text-muted);
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color var(--cp-transition),
+      color var(--cp-transition);
+  }
+  .apoaap-theme-toggle-btn:hover {
+    color: var(--cp-text);
+    background: var(--cp-surface);
+  }
+  .apoaap-theme-toggle-btn.is-active {
+    background: var(--cp-surface);
+    color: var(--cp-accent);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+  .apoaap-theme-toggle-label {
+    display: none;
+  }
+  @media (min-width: 900px) {
+    .apoaap-theme-toggle-label {
+      display: inline;
+    }
+  }
+
+  /* ── Nav links (Filament-style: gray default, orange pill when active) ─ */
   .apoaap-nav-link {
     display: block;
     padding: 0.5rem 0.75rem;
@@ -114,8 +194,10 @@
     color: var(--cp-text-muted);
     font-size: 0.875rem;
     font-weight: 500;
-    border-left: 2px solid transparent;
     text-decoration: none;
+    transition:
+      background-color var(--cp-transition),
+      color var(--cp-transition);
   }
   .apoaap-nav-link:hover {
     background: var(--cp-surface-2);
@@ -126,7 +208,7 @@
   .apoaap-nav-link[aria-current="page"] {
     background: var(--cp-accent-subtle);
     color: var(--cp-accent);
-    border-left-color: var(--cp-accent-bar);
+    font-weight: 600;
   }
 
   /* ── App selector ───────────────────────────────────────────────────── */
@@ -134,7 +216,6 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-left: auto;
   }
   .apoaap-app-selector-label {
     font-size: 0.75rem;
@@ -144,15 +225,21 @@
   }
   .apoaap-app-select {
     appearance: none;
-    background: var(--cp-surface);
+    background-color: var(--cp-surface);
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-sm);
     padding: 0.35rem 1.75rem 0.35rem 0.625rem;
     font-size: 0.85rem;
     color: var(--cp-text);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b635b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.5rem center;
+    transition:
+      border-color var(--cp-transition),
+      background-color var(--cp-transition);
+  }
+  .dark .apoaap-app-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   }
   .apoaap-app-select:disabled {
     color: var(--cp-text-muted);
@@ -173,6 +260,10 @@
     border-radius: var(--cp-radius);
     box-shadow: var(--cp-shadow-card);
     overflow: hidden;
+    transition:
+      background-color var(--cp-transition),
+      border-color var(--cp-transition),
+      box-shadow var(--cp-transition);
   }
   .apoaap-merchant-table-wrap,
   .apoaap-audit-table-wrap {
@@ -413,5 +504,29 @@
     border-radius: var(--cp-radius-sm);
     padding: 0.45rem 0.65rem;
     font-size: 0.875rem;
+    background: var(--cp-surface);
+    color: var(--cp-text);
+  }
+
+  /* ── Section labels & callouts ──────────────────────────────────────── */
+  .apoaap-section-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cp-text-muted);
+  }
+  .apoaap-callout-note {
+    border: 1px solid var(--cp-note-border);
+    background: var(--cp-note-bg);
+    border-radius: var(--cp-radius-sm);
+  }
+  .apoaap-callout-success {
+    border: 1px solid var(--cp-success-border);
+    background: var(--cp-success-bg);
+    border-radius: var(--cp-radius-sm);
+  }
+  .apoaap-text-error {
+    color: var(--cp-danger);
   }
 }

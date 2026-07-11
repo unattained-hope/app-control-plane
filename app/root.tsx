@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { trpc } from "~/lib/trpc.js";
 import appStylesHref from "~/styles/app.css?url";
+import { THEME_INIT_SCRIPT } from "~/lib/theme.js";
 
 /** Load the single global stylesheet on every page (cp-visual-design). */
 export const links: LinksFunction = () => [
@@ -22,11 +23,12 @@ export const links: LinksFunction = () => [
 /** Document shell (RR7 Layout). Wraps every route, including the error boundary. */
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Apoaap Control Plane</title>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Meta />
         <Links />
       </head>
