@@ -18,6 +18,8 @@ describe("RBAC matrix", () => {
     "impersonate",
     "flags:manage",
     "announcements:manage",
+    "settings:manage",
+    "usage_alerts:manage",
   ];
 
   it("VIEWER can only view", () => {
@@ -66,14 +68,20 @@ describe("RBAC matrix", () => {
     expect(roleCan("VIEWER", "impersonate")).toBe(false);
   });
 
-  it("flags:manage + announcements:manage are ADMIN-only (cp-feature-flags / cp-announcements-nps)", () => {
-    for (const a of ["flags:manage", "announcements:manage"] as Action[]) {
+  it("flags:manage + announcements:manage + settings:manage are ADMIN-only (cp-feature-flags / cp-announcements-nps / cp-app-settings)", () => {
+    for (const a of ["flags:manage", "announcements:manage", "settings:manage"] as Action[]) {
       expect(roleCan("ADMIN", a)).toBe(true);
       expect(roleCan("SUPPORT", a)).toBe(false);
       expect(roleCan("VIEWER", a)).toBe(false);
     }
     // Health reads (the 360 panel + at-risk list) stay under `view` for every role.
     expect(roleCan("VIEWER", "view")).toBe(true);
+  });
+
+  it("usage_alerts:manage is ADMIN-only (cp usage-alerts-digest)", () => {
+    expect(roleCan("ADMIN", "usage_alerts:manage")).toBe(true);
+    expect(roleCan("SUPPORT", "usage_alerts:manage")).toBe(false);
+    expect(roleCan("VIEWER", "usage_alerts:manage")).toBe(false);
   });
 
   it("ADMIN can do everything", () => {

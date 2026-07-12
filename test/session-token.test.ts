@@ -34,10 +34,12 @@ describe("shop session tokens", () => {
     expect(verifyShopToken("")).toBeNull();
   });
 
-  it("allows only admin.shopify.com and the shop's own origin", () => {
+  it("allows only admin.shopify.com and the shop's own origin (non-dev)", () => {
     const shop = "aurora-threads.myshopify.com";
     expect(isAllowedOrigin("https://admin.shopify.com", shop)).toBe(true);
     expect(isAllowedOrigin(`https://${shop}`, shop)).toBe(true);
     expect(isAllowedOrigin("https://evil.example", shop)).toBe(false);
+    // NODE_ENV=test in vitest — localhost dev bypass is off here.
+    expect(isAllowedOrigin("http://localhost:5173", shop)).toBe(false);
   });
 });

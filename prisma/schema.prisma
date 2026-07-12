@@ -152,6 +152,34 @@ enum AnnouncementAudience {
   SHOP_LIST
 }
 
+/// Direction of a usage alert rule's threshold comparison (cp usage-alerts-digest).
+/// The rule breaches when the observed week-over-week delta crosses the threshold in
+/// this direction: `DROP_GT` for a decline worse than the threshold (funnel regression),
+/// `RISE_GT` for a spike larger than the threshold (dormancy surge). Deltas are computed
+/// from `UsageMetricDaily` / `UsageCohortSnapshot` — never raw events.
+enum UsageAlertComparison {
+  DROP_GT
+  RISE_GT
+}
+
+/// How a usage alert rule reads its metric delta (cp usage-alerts-digest).
+/// `METRIC_WOW_POINTS`  — absolute change in a `UsageMetricDaily` value this week vs last
+///                        (e.g. wizard-completed conversion in points).
+/// `METRIC_WOW_PERCENT` — percent change of a `UsageMetricDaily` value week-over-week.
+/// `COHORT_TRANSITION`  — count of shops entering a lifecycle (e.g. DORMANT) this week
+///                        vs last, read from `UsageCohortSnapshot` runs.
+enum UsageAlertMetricKind {
+  METRIC_WOW_POINTS
+  METRIC_WOW_PERCENT
+  COHORT_TRANSITION
+}
+
+/// Breach state of a usage alert rule's current episode (cp usage-alerts-digest).
+enum UsageAlertEpisodeState {
+  OK
+  BREACHED
+}
+
 /// Lifecycle of a merchant-requested plan change (cp-self-serve-billing). The control
 /// plane records + dispatches to the app admin API; it never mutates billing directly.
 enum PlanChangeStatus {
@@ -177,22 +205,24 @@ model AdminUser {
 
 /// The tenant catalog / app registry.
 model App {
-  id             String    @id @default(cuid())
-  key            String    @unique // "saleswitch"
-  name           String
-  status         AppStatus @default(ACTIVE)
-  themeTokens    Json? // accent/logo for per-app theming (v1)
-  replicaRef     String // secrets-manager KEY, NOT a raw DSN
-  enabledModules String[] // ["merchants","billing","chat","dashboard"]
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  key                     String    @unique // "saleswitch"
+  name                    String
+  status                  AppStatus @default(ACTIVE)
+  themeTokens             Json? // accent/logo for per-app theming (v1)
+  replicaRef              String // secrets-manager KEY, NOT a raw DSN
+  enabledModules          String[] // ["merchants","billing","chat","dashboard"]
+  /// Slug of the built-in IMAGE badge auto-selected when merchants first pick Image badge (cp-app-settings).
+  defaultBadgeGraphicSlug String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   @@map("apps")
 }
 
 /// Append-only. Never updated or deleted (cp-audit-log).
 model AuditLog {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   actorUserId  String
   appKey       String
   merchantShop String? // shop domain if action targets a merchant
@@ -244,25 +274,25 @@ model MerchantTag {
 /// Support inbox (in-house chat). SLA/priority + CSAT fields (cp-inbox-sla,
 /// cp-conversation-csat) are additive: defaults backfill existing rows.
 model Conversation {
-  id            String     @id @default(cuid())
-  appKey        String
-  shop          String
-  status        ConvStatus @default(OPEN)
-  assignedTo    String? // AdminUser id (rule-driven or manual assign)
-  subject       String?
-  unreadCount   Int        @default(0)
+  id                 String     @id @default(cuid())
+  appKey             String
+  shop               String
+  status             ConvStatus @default(OPEN)
+  assignedTo         String? // AdminUser id (rule-driven or manual assign)
+  subject            String?
+  unreadCount        Int        @default(0)
   // Priority-keyed SLA (cp-inbox-sla). `NONE` ⇒ null due-times ⇒ never swept.
-  priority           Priority  @default(NONE)
-  slaState           SlaState  @default(ON_TRACK)
+  priority           Priority   @default(NONE)
+  slaState           SlaState   @default(ON_TRACK)
   firstReplyAt       DateTime? // stamped once, on the first non-internal agent reply
   firstResponseDueAt DateTime?
   resolutionDueAt    DateTime?
   // Post-close CSAT (cp-conversation-csat). Idempotent once scored.
-  csatScore     Int? // 1–5
-  csatComment   String?
-  lastMessageAt DateTime?
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  csatScore          Int? // 1–5
+  csatComment        String?
+  lastMessageAt      DateTime?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   messages Message[]
   tags     ConversationTag[]
@@ -301,6 +331,95 @@ model KpiSnapshot {
 
   @@index([appKey, metric, asOf])
   @@map("kpi_snapshots")
+}
+
+/// Mirror of an app's usage-event stream (usage-analytics Phase 2b). Pulled from
+/// the app's cursor-paginated export endpoint by the usageIngest worker and
+/// stored in the CP's OWN DB. This is a DELIBERATE widening of "merchant business
+/// data is never copied here" (approved decision D2): usage events are behavioral
+/// metadata, retention-bounded and PII-free (only shopDomain/userId), powering the
+/// per-merchant activity feed and letting new metrics be computed over history
+/// without hitting the app. `sourceEventId` (the app's per-row id) + `appKey` is
+/// the idempotency key; `sourceSeq` (the app's monotonic BIGSERIAL) is the cursor
+/// value. Pruned after a retention window and on shop redaction.
+model UsageEvent {
+  id            String   @id @default(cuid())
+  appKey        String
+  sourceEventId String // the source event's own id (Badgy cuid) — dedupe key
+  sourceSeq     BigInt // the source's monotonic seq (export cursor value)
+  shopDomain    String
+  userId        String?
+  name          String
+  category      String
+  source        String
+  properties    Json?
+  impersonated  Boolean  @default(false)
+  occurredAt    DateTime
+  ingestedAt    DateTime @default(now())
+
+  @@unique([appKey, sourceEventId])
+  @@index([appKey, shopDomain, occurredAt])
+  @@index([appKey, name, occurredAt])
+  @@map("usage_events")
+}
+
+/// Per-app cursor for the usage-event pull (usage-analytics Phase 2b). `sinceSeq`
+/// is the highest source `seq` durably mirrored; the ingest worker advances it in
+/// the SAME transaction as each page insert, so a crash mid-drain re-pulls the
+/// last page (idempotent via UsageEvent's unique constraint) rather than skipping.
+model UsageSyncCursor {
+  id        String   @id @default(cuid())
+  appKey    String   @unique
+  sinceSeq  BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("usage_sync_cursors")
+}
+
+/// Dimensioned daily usage metric (usage-analytics Phase 3). Deliberately WIDENS
+/// the flat KpiSnapshot shape with a `dimension` column because funnels, adoption,
+/// and per-action counts are dimensioned series (stage / feature / event name /
+/// `cohortWeek:weekN`); `dimension` is "" for scalar metrics. The rollup writes
+/// these via UPSERT on the compound key (NOT append-only createMany like
+/// KpiSnapshot) so recomputing a day overwrites in place — a re-run is idempotent
+/// and self-heals a partial failure. Dashboards read these rows, never raw events.
+/// `date` is a UTC day (DATE, no time). CP-owned => the architecture guard stays green.
+model UsageMetricDaily {
+  id        String   @id @default(cuid())
+  appKey    String
+  date      DateTime @db.Date
+  metric    String // e.g. "usage.active.wau", "usage.funnel.stage", "usage.adoption.d30"
+  dimension String   @default("") // stage / feature / event name / rule id / "cohortWeek:weekN"; "" for scalars
+  value     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([appKey, date, metric, dimension])
+  @@index([appKey, metric, date])
+  @@map("usage_metric_daily")
+}
+
+/// Point-in-time per-shop cohort assignment (usage-analytics Phase 3). Same snapshot
+/// pattern as MerchantHealthSnapshot — it carries `shop` (NOT `shopDomain`, which is
+/// the mirror's field) for consistency with the snapshot family; the nightly cohort
+/// job joins the mirror on the domain value. Append-only per run: keeping every run's
+/// row preserves the HISTORY of segment movement (e.g. ENGAGED→DORMANT), itself a
+/// product signal. `personaTags` is a string array (zero or more). CP-owned => the
+/// architecture guard stays green.
+model UsageCohortSnapshot {
+  id            String   @id @default(cuid())
+  appKey        String
+  shop          String
+  lifecycle     String // NEW | ONBOARDING | ACTIVATED | ENGAGED | DORMANT | CHURNED
+  intensity     String // POWER | REGULAR | LIGHT | INACTIVE
+  personaTags   String[] // e.g. ["BADGE_DESIGNER", "AUTOMATION_USER"]
+  activityScore Float
+  computedAt    DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([appKey, lifecycle, computedAt])
+  @@index([appKey, shop, computedAt])
+  @@map("usage_cohort_snapshots")
 }
 
 /// Control-plane-owned record of every ingested Shopify webhook
@@ -572,4 +691,105 @@ model PlanChangeRequest {
   @@index([appKey, shop, createdAt])
   @@index([status])
   @@map("plan_change_requests")
+}
+
+/// Control-plane-owned built-in badge graphic (cp-app-settings). Portfolio-wide
+/// IMAGE badge gallery presets the SaleSwitch app reads via `/api/badge-graphics`;
+/// the control plane never writes badge content into the app DB.
+model BadgeGraphic {
+  id          String   @id @default(cuid())
+  appKey      String
+  slug        String
+  label       String
+  imagePath   String
+  textBaked   Boolean  @default(true)
+  theme       String
+  graphicType String
+  sortOrder   Int      @default(0)
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([appKey, slug])
+  @@index([appKey, graphicType, theme])
+  @@map("badge_graphics")
+}
+
+/// Control-plane-owned usage alert rule (cp usage-alerts-digest, usage-analytics P5).
+/// A data-driven threshold over the pre-rolled usage metrics: the alert-evaluation job
+/// reads this week's vs last week's `UsageMetricDaily` (or `UsageCohortSnapshot`) delta
+/// for `(metric, dimension)` and breaches when it crosses `threshold` in `comparison`'s
+/// direction. Rules are data (not hardcoded checks) so ADMINs tune thresholds without a
+/// redeploy; seeded DISABLED and enabled individually. Evaluation runs on FINALIZED daily
+/// numbers only. CP-owned => the architecture guard stays green.
+model UsageAlertRule {
+  id          String                @id @default(cuid())
+  appKey      String
+  /// Stable slug (unique per app) so seed upserts + audit targets are idempotent.
+  key         String
+  label       String
+  metricKind  UsageAlertMetricKind
+  /// The `UsageMetricDaily.metric` (or, for COHORT_TRANSITION, the lifecycle whose
+  /// entries are counted, e.g. "DORMANT") the rule watches.
+  metric      String
+  /// The `UsageMetricDaily.dimension` selector (funnel stage / feature / ""); unused
+  /// for COHORT_TRANSITION.
+  dimension   String                @default("")
+  comparison  UsageAlertComparison
+  /// Breach threshold: points (METRIC_WOW_POINTS), a 0–1 fraction (METRIC_WOW_PERCENT),
+  /// or an absolute shop count (COHORT_TRANSITION).
+  threshold   Float
+  enabled     Boolean               @default(false)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  state UsageAlertState?
+
+  @@unique([appKey, key])
+  @@index([appKey, enabled])
+  @@map("usage_alert_rules")
+}
+
+/// Per-rule breach-episode state (cp usage-alerts-digest). The alert job flips a rule
+/// OK→BREACHED (fires ONE alert) and BREACHED→OK (fires ONE recovery notice); repeated
+/// evaluations inside an ongoing episode are silent. Persisting the episode here is what
+/// makes the once-per-episode guarantee survive across job runs. One row per rule.
+/// CP-owned => the architecture guard stays green.
+model UsageAlertState {
+  id            String                 @id @default(cuid())
+  ruleId        String                 @unique
+  state         UsageAlertEpisodeState @default(OK)
+  /// The delta that opened the current episode (context for the recovery notice).
+  lastValue     Float?
+  /// When the current episode began (OK→BREACHED); null while OK.
+  breachedAt    DateTime?
+  /// When the most recent evaluation ran (breach or recovery), for observability.
+  lastEvaluatedAt DateTime?
+  updatedAt     DateTime               @updatedAt
+
+  rule UsageAlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@map("usage_alert_states")
+}
+
+/// Per-admin saved view for the usage shop explorer (cp usage-saved-views, P5).
+/// A named preset of the explorer's client state (filters, axis selection, color-by),
+/// stored as opaque `params` JSON that round-trips back into the page. Private to its
+/// owner (`adminUserId`) — no sharing/team presets — and capped per user server-side.
+/// CP-owned => the architecture guard stays green.
+model UsageSavedView {
+  id          String   @id @default(cuid())
+  appKey      String
+  /// Owner (AdminUser id). A view is visible only to this admin.
+  adminUserId String
+  name        String
+  /// Opaque explorer state (lifecycle/intensity filters, x/y axes, color-by). Shape is
+  /// owned by the explorer UI; the server treats it as an opaque round-tripped blob.
+  params      Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([appKey, adminUserId, name])
+  @@index([appKey, adminUserId, updatedAt])
+  @@map("usage_saved_views")
 }

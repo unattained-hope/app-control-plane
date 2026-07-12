@@ -110,7 +110,12 @@ export const chatRouter = router({
     .input(z.object({ conversationId: z.string() }))
     .query(({ input }) => getConversationTagService().list(input.conversationId)),
 
-  markRead: requireAbility("reply")
+  /** Aggregate unread count for the sidebar badge. */
+  unreadTotal: requireAbility("view").query(({ ctx }) =>
+    getConversationService().unreadTotal(ctx.appKey),
+  ),
+
+  markRead: requireAbility("view")
     .input(z.object({ conversationId: z.string() }))
     .mutation(({ input }) => getConversationService().markRead(input.conversationId)),
 });

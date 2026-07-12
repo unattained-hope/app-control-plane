@@ -8,10 +8,16 @@
 #   3. Ensures .env exists and deps are installed
 #   4. Syncs the Prisma schema + seeds the App registry (both idempotent)
 #   5. Kills any stale dev server holding the port, then starts a fresh one
+#      (Vite dev server + Socket.IO chat gateway via vite-plugin-chat-gateway.ts)
 #
-# Badgy/SaleSwitch does NOT need to run — its data is served by an in-memory
-# fixture (see app/server/connectors/registry.ts). Badgy's Redis is on :6380;
-# this script starts a separate Redis on :6379 for the control plane.
+# Badgy/SaleSwitch does NOT need to be running for the CP UI — but for real merchant
+# data in /merchants, Badgy's Postgres must be up (docker compose in ../badgy on :5433).
+# Badgy's Redis is on :6380; this script starts a separate Redis on :6379 for the CP.
+#
+# Chat (local):
+#   • Agent inbox  → http://localhost:5173/dev-login?role=SUPPORT&to=/inbox
+#   • Merchant UI  → http://localhost:5173/dev-chat?shop=your-store.myshopify.com
+#     (floating bubble harness; messages appear in /inbox for that shop)
 #
 # Usage:  ./scripts/dev-up.sh        (run from anywhere; logs stream to your terminal)
 # Stop:   Ctrl-C                     (stops the dev server; Postgres + Redis stay up)
@@ -125,6 +131,9 @@ else
 fi
 
 # ── 4. Prisma schema + seed (both idempotent, safe to re-run) ─────────────────
+log "Clearing Vite / React Router caches (picks up regenerated Prisma client)."
+rm -rf node_modules/.vite .react-router
+
 log "Generating Prisma client."
 npx prisma generate                          # regenerate the typed client from schema.prisma
 
@@ -138,6 +147,9 @@ npm run seed                                 # inserts/updates the 'saleswitch' 
 free_port "$DEV_PORT"                         # stop any previous dev server still holding the port
 
 log "Starting dev server → http://localhost:${DEV_PORT}"
-echo   "   Log in via: http://localhost:${DEV_PORT}/dev-login?role=ADMIN&to=/"
+echo   "   Log in via:  http://localhost:${DEV_PORT}/dev-login?role=ADMIN&to=/"
+echo   "   Agent inbox: http://localhost:${DEV_PORT}/dev-login?role=SUPPORT&to=/inbox"
+echo   "   Merchant chat bubble (dev harness): http://localhost:${DEV_PORT}/dev-chat?shop=dev-shop.myshopify.com"
+echo   "   Socket.IO chat gateway attaches automatically (same port as the dev server)."
 echo   "   (swap role= for SUPPORT or VIEWER to test RBAC · Ctrl-C to stop)"
 exec npm run dev                              # exec replaces this script so Ctrl-C goes straight to Vite

@@ -14,6 +14,22 @@ import {
 import { scheduleSlaSweep, startSlaWorker } from "./slaSweep.js";
 import { scheduleOpsRollup, startOpsRollupWorker } from "./opsRollup.js";
 import { scheduleGrowthRollup, startGrowthRollupWorker } from "./growthRollup.js";
+import {
+  scheduleUsageIngest,
+  scheduleUsageMirrorPrune,
+  startUsageIngestWorker,
+} from "./usageIngest.js";
+import {
+  scheduleUsageRollupIncremental,
+  scheduleUsageRollupFinalize,
+  scheduleUsageCohort,
+  scheduleUsageAlertEval,
+  startUsageRollupWorker,
+} from "./usageRollup.js";
+import {
+  scheduleUsageDigest,
+  startUsageDigestWorker,
+} from "./usageDigest.js";
 
 initObservability("worker");
 startKpiWorker();
@@ -26,8 +42,18 @@ startOpsRollupWorker();
 void scheduleOpsRollup("saleswitch");
 startGrowthRollupWorker();
 void scheduleGrowthRollup("saleswitch");
+startUsageIngestWorker();
+void scheduleUsageIngest("saleswitch");
+void scheduleUsageMirrorPrune("saleswitch");
+startUsageRollupWorker();
+void scheduleUsageRollupIncremental("saleswitch");
+void scheduleUsageRollupFinalize("saleswitch");
+void scheduleUsageCohort("saleswitch");
+void scheduleUsageAlertEval("saleswitch");
+startUsageDigestWorker();
+void scheduleUsageDigest("saleswitch");
 
 // eslint-disable-next-line no-console
 console.log(
-  "[dev-worker] KPI + webhook workers running; compliance + SLA + ops + growth rollups scheduled.",
+  "[dev-worker] KPI + webhook workers running; compliance + SLA + ops + growth rollups + usage ingest + usage rollups/cohort/alert-eval + weekly digest scheduled.",
 );

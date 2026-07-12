@@ -244,6 +244,15 @@ export class ConversationService {
       data: { unreadCount: 0 },
     });
   }
+
+  /** Sum unread merchant messages across open conversations (nav badge). */
+  async unreadTotal(appKey: string): Promise<number> {
+    const rows = await this.db.conversation.findMany({
+      where: { appKey, status: "OPEN" },
+      select: { unreadCount: true },
+    });
+    return rows.reduce((sum, row) => sum + row.unreadCount, 0);
+  }
 }
 
 function toListRow(c: {

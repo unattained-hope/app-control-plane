@@ -90,6 +90,28 @@ describe("ops monitoring", () => {
     expect(g.complianceBreaching).toBe(0);
   });
 
+  it("collectGauges reports usage-ingest lag in seconds (-1 when never ingested)", async () => {
+    const db = new FakeDb();
+    const now = new Date("2026-07-11T00:05:00Z");
+    // No usage events yet → -1.
+    const svc = makeSvc(db, {});
+    expect((await svc.collectGauges("saleswitch", now)).usageIngestLagSeconds).toBe(-1);
+
+    // Newest event 5 min ago → 300s lag; other-app events don't count.
+    db.store.usageEvent.push({
+      id: "u1",
+      appKey: "saleswitch",
+      occurredAt: new Date("2026-07-11T00:00:00Z"),
+    });
+    db.store.usageEvent.push({
+      id: "u2",
+      appKey: "otherapp",
+      occurredAt: new Date("2026-07-11T00:04:59Z"),
+    });
+    const g = await svc.collectGauges("saleswitch", now);
+    expect(g.usageIngestLagSeconds).toBe(300);
+  });
+
   it("runRollup persists ops KpiSnapshot rows (incl. the SLO error-ratio sample)", async () => {
     const db = new FakeDb();
     const svc = makeSvc(db, {});

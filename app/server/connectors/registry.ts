@@ -4,7 +4,9 @@ import {
   buildSaleSwitchConnector,
   type ReplicaReadSource,
 } from "./saleswitchConnector.js";
-import { makeFixtureSource } from "./fixtureSource.js";
+import { makeFixtureSource, defaultFixtureSeed } from "./fixtureSource.js";
+import { makeBadgyReplicaSource } from "./badgyReplicaSource.js";
+import { getConfig } from "~/lib/config.js";
 
 /**
  * Connector registry (cp-app-registry-connector). Resolves the active connector
@@ -27,9 +29,18 @@ export function registerConnectorBuilder(
   builders.set(key, builder);
 }
 
+function resolveDefaultSource(): ReplicaReadSource {
+  const cfg = getConfig();
+  // Local dev: read real merchants from the sibling Badgy Postgres (SALESWITCH_REPLICA_URL).
+  if (cfg.NODE_ENV === "development") {
+    return makeBadgyReplicaSource(cfg.SALESWITCH_REPLICA_URL);
+  }
+  return makeFixtureSource(defaultFixtureSeed());
+}
+
 // SaleSwitch's builder. The replica source is swappable (real replica client vs
-// fixture); the MVP uses the in-memory fixture until D1 provisions a replica.
-let saleswitchSource: ReplicaReadSource = makeFixtureSource();
+// fixture); local dev reads Badgy's `shops` table via badgyReplicaSource.
+let saleswitchSource: ReplicaReadSource = resolveDefaultSource();
 export function __setSaleSwitchSource(source: ReplicaReadSource): void {
   saleswitchSource = source;
 }

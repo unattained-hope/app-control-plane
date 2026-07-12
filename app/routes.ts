@@ -18,6 +18,12 @@ export default [
   // Tier 3 merchant-facing resource routes (cp-feature-flags / cp-self-serve-billing).
   // Token/shop-token authenticated, no UI, no shell — the app/widget consumes these.
   route("api/flags", "routes/api.flags.tsx"),
+  route("api/badge-graphics", "routes/api.badge-graphics.tsx"),
+  route("api/badge-graphics/upload", "routes/api.badge-graphics.upload.tsx"),
+  route(
+    "api/badge-graphics/assets/:appKey/:filename",
+    "routes/api.badge-graphics.assets.$appKey.$filename.tsx",
+  ),
   route("api/self-serve-billing", "routes/api.self-serve-billing.tsx"),
   // Dev-only role switcher (sets the cp_dev_role cookie). Inert in production.
   route("dev-login", "routes/dev-login.tsx"),
@@ -35,8 +41,18 @@ export default [
     route("break-glass", "routes/break-glass.tsx"),
     // Tier 3 — growth & retention.
     route("at-risk", "routes/at-risk.tsx"),
+    // usage-analytics Phase 4 — usage dashboards (module-gated in the shell nav).
+    route("usage", "routes/usage._index.tsx"),
+    route("usage/features", "routes/usage.features.tsx"),
+    route("usage/funnel", "routes/usage.funnel.tsx"),
+    route("usage/shops", "routes/usage.shops.tsx"),
+    // usage-analytics Phase 5 — ADMIN-only alert-rule management (RBAC-enforced server-side).
+    route("usage/alerts", "routes/usage.alerts.tsx"),
     route("feature-flags", "routes/feature-flags.tsx"),
     route("announcements", "routes/announcements.tsx"),
     route("plan-requests", "routes/plan-requests.tsx"),
+    route("settings", "routes/settings._index.tsx"),
+    route("settings/badge-graphics", "routes/settings.badge-graphics.tsx"),
+    route("settings/merchant-badges", "routes/settings.merchant-badges.tsx"),
   ]),
 ] satisfies RouteConfig;

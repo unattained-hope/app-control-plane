@@ -85,12 +85,19 @@ describe("LifecycleService", () => {
     db.store.merchantNote.push({ id: "mn1", appKey: "saleswitch", shop: "gone.com", body: "x" });
     db.store.conversation.push({ id: "cv1", appKey: "saleswitch", shop: "gone.com", status: "CLOSED" });
     db.store.auditLog.push({ id: "aud_keep", appKey: "saleswitch", action: "merchant.uninstalled" });
+    // Mirrored usage events: the redacted shop's go; another shop's stay.
+    db.store.usageEvent.push({ id: "ue1", appKey: "saleswitch", shopDomain: "gone.com" });
+    db.store.usageEvent.push({ id: "ue2", appKey: "saleswitch", shopDomain: "gone.com" });
+    db.store.usageEvent.push({ id: "ue3", appKey: "saleswitch", shopDomain: "stays.com" });
 
     const result = await makeSvc(db).purgeForRedactedShop("saleswitch", "gone.com");
 
     expect(result.purged).toBe(true);
+    expect(result.usageEvents).toBe(2);
     expect(db.store.merchantNote).toHaveLength(0);
     expect(db.store.conversation).toHaveLength(0);
+    // Only the redacted shop's usage events were removed.
+    expect(db.store.usageEvent.map((r) => r.id)).toEqual(["ue3"]);
     // The append-only audit log is preserved (plus a new purge audit row).
     expect(db.store.auditLog.some((a) => a.id === "aud_keep")).toBe(true);
   });

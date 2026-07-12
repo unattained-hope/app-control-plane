@@ -146,14 +146,17 @@ export class LifecycleService {
   async purgeForRedactedShop(
     appKey: string,
     shop: string,
-  ): Promise<{ purged: boolean; notes: number; conversations: number }> {
+  ): Promise<{ purged: boolean; notes: number; conversations: number; usageEvents: number }> {
     if (!getConfig().CHURN_RETENTION_PURGE_ENABLED) {
-      return { purged: false, notes: 0, conversations: 0 };
+      return { purged: false, notes: 0, conversations: 0, usageEvents: 0 };
     }
     return this.db.$transaction(async (tx) => {
       const notes = await tx.merchantNote.deleteMany({ where: { appKey, shop } });
       // Messages cascade-delete with their conversation (schema onDelete: Cascade).
       const conversations = await tx.conversation.deleteMany({ where: { appKey, shop } });
+      // Mirrored usage events for the shop (usage-analytics Phase 2b). Keyed by
+      // `shopDomain` (the mirror's column name), which equals `shop` here.
+      const usage = await tx.usageEvent.deleteMany({ where: { appKey, shopDomain: shop } });
       await this.audit.append(
         {
           actorUserId: SYSTEM_ACTOR,
@@ -168,11 +171,17 @@ export class LifecycleService {
             retentionPurge: true,
             notes: notes.count,
             conversations: conversations.count,
+            usageEvents: usage.count,
           },
         },
         tx,
       );
-      return { purged: true, notes: notes.count, conversations: conversations.count };
+      return {
+        purged: true,
+        notes: notes.count,
+        conversations: conversations.count,
+        usageEvents: usage.count,
+      };
     });
   }
 }

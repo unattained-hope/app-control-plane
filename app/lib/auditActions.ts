@@ -83,6 +83,24 @@ export const AuditActions = {
   BillingPlanChangeDispatched: "billing.plan.change.dispatched",
   BillingPlanChangeCompleted: "billing.plan.change.completed",
   BillingPlanChangeFailed: "billing.plan.change.failed",
+
+  // App settings — badge graphic gallery (cp-app-settings).
+  BadgeGraphicCreate: "badge.graphic.create",
+  BadgeGraphicUpdate: "badge.graphic.update",
+  BadgeGraphicArchive: "badge.graphic.archive",
+  BadgeGraphicDelete: "badge.graphic.delete",
+  BadgeGraphicSetDefault: "badge.graphic.setDefault",
+
+  // Usage alert rules (cp usage-alerts-digest, usage-analytics P5). ADMIN-managed
+  // registry of threshold rules over the pre-rolled metrics; enable/disable/edit are
+  // audited like other admin writes. The breach + recovery notices are JOB-sourced.
+  UsageAlertRuleCreate: "usage.alert.rule.create",
+  UsageAlertRuleUpdate: "usage.alert.rule.update",
+  UsageAlertRuleEnable: "usage.alert.rule.enable",
+  UsageAlertRuleDisable: "usage.alert.rule.disable",
+  UsageAlertRuleDelete: "usage.alert.rule.delete",
+  UsageAlertFired: "usage.alert.fired", // SYSTEM/JOB on OK→BREACHED
+  UsageAlertRecovered: "usage.alert.recovered", // SYSTEM/JOB on BREACHED→OK
 } as const;
 
 /** The union of all known audit action identifiers. */

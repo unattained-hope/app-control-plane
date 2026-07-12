@@ -49,6 +49,15 @@ export class FakeDb {
   announcement: ReturnType<FakeDb["genericModel"]>;
   npsResponse: ReturnType<FakeDb["genericModel"]>;
   planChangeRequest: ReturnType<FakeDb["genericModel"]>;
+  app: ReturnType<FakeDb["genericModel"]>;
+  badgeGraphic: ReturnType<FakeDb["badgeGraphicModel"]>;
+  usageEvent: ReturnType<FakeDb["usageEventModel"]>;
+  usageSyncCursor: ReturnType<FakeDb["usageSyncCursorModel"]>;
+  usageMetricDaily: ReturnType<FakeDb["usageMetricDailyModel"]>;
+  usageCohortSnapshot: ReturnType<FakeDb["genericModel"]>;
+  usageAlertRule: ReturnType<FakeDb["genericModel"]>;
+  usageAlertState: ReturnType<FakeDb["usageAlertStateModel"]>;
+  usageSavedView: ReturnType<FakeDb["genericModel"]>;
 
   store: {
     webhookEvent: Row[];
@@ -69,7 +78,16 @@ export class FakeDb {
     featureFlagOverride: Row[];
     announcement: Row[];
     npsResponse: Row[];
-    planChangeRequest: Row[];
+  planChangeRequest: Row[];
+  app: Row[];
+  badgeGraphic: Row[];
+  usageEvent: Row[];
+  usageSyncCursor: Row[];
+  usageMetricDaily: Row[];
+  usageCohortSnapshot: Row[];
+  usageAlertRule: Row[];
+  usageAlertState: Row[];
+  usageSavedView: Row[];
   } = {
     webhookEvent: [],
     auditLog: [],
@@ -90,6 +108,15 @@ export class FakeDb {
     announcement: [],
     npsResponse: [],
     planChangeRequest: [],
+    app: [],
+    badgeGraphic: [],
+    usageEvent: [],
+    usageSyncCursor: [],
+    usageMetricDaily: [],
+    usageCohortSnapshot: [],
+    usageAlertRule: [],
+    usageAlertState: [],
+    usageSavedView: [],
   };
 
   /** Set true to make every `auditLog.create` throw (force same-tx rollback). */
@@ -146,6 +173,267 @@ export class FakeDb {
       error: null,
       updatedAt: new Date(),
     }));
+    this.app = this.genericModel("app", "app", () => ({
+      defaultBadgeGraphicSlug: null,
+      updatedAt: new Date(),
+    }));
+    this.badgeGraphic = this.badgeGraphicModel();
+    this.usageEvent = this.usageEventModel();
+    this.usageSyncCursor = this.usageSyncCursorModel();
+    this.usageMetricDaily = this.usageMetricDailyModel();
+    this.usageCohortSnapshot = this.genericModel("usageCohortSnapshot", "ucs", () => ({
+      personaTags: [],
+    }));
+    this.usageAlertRule = this.genericModel("usageAlertRule", "uar", () => ({
+      dimension: "",
+      enabled: false,
+      updatedAt: new Date(),
+    }));
+    this.usageAlertState = this.usageAlertStateModel();
+    this.usageSavedView = this.genericModel("usageSavedView", "usv", () => ({
+      updatedAt: new Date(),
+    }));
+  }
+
+  /**
+   * Per-rule alert-episode state with the alert service's exact needs: `findUnique` /
+   * `upsert` on the unique `ruleId` (a non-`id` unique, like usageSyncCursor's appKey).
+   */
+  private usageAlertStateModel() {
+    const rows = this.store.usageAlertState;
+    return {
+      findUnique: async ({ where }: { where: { ruleId: string } }) =>
+        rows.find((r) => r.ruleId === where.ruleId) ?? null,
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { ruleId: string };
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => {
+        const existing = rows.find((r) => r.ruleId === where.ruleId);
+        if (existing) {
+          applyUpdate(existing, { ...update, updatedAt: new Date() });
+          return existing;
+        }
+        const row: Row = { id: this.nextId("uas"), updatedAt: new Date(), ...create };
+        rows.push(row);
+        return row;
+      },
+    };
+  }
+
+  /**
+   * Dimensioned daily-metric model with the rollup's exact need: `upsert` on the
+   * compound unique `(appKey, date, metric, dimension)` — overwriting `value` in place
+   * so a re-run is idempotent (Prisma's `where.appKey_date_metric_dimension` shape).
+   * Dates compare by epoch so distinct Date instances for the same UTC day collapse.
+   */
+  private usageMetricDailyModel() {
+    const rows = this.store.usageMetricDaily;
+    const keyOf = (appKey: string, date: Date, metric: string, dimension: string) =>
+      `${appKey}::${date.getTime()}::${metric}::${dimension}`;
+    return {
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: {
+          appKey_date_metric_dimension: {
+            appKey: string;
+            date: Date;
+            metric: string;
+            dimension: string;
+          };
+        };
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => {
+        const k = where.appKey_date_metric_dimension;
+        const existing = rows.find(
+          (r) =>
+            keyOf(r.appKey as string, r.date as Date, r.metric as string, r.dimension as string) ===
+            keyOf(k.appKey, k.date, k.metric, k.dimension),
+        );
+        if (existing) {
+          applyUpdate(existing, { ...update, updatedAt: new Date() });
+          return existing;
+        }
+        const row: Row = {
+          id: this.nextId("umd"),
+          dimension: "",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ...create,
+        };
+        rows.push(row);
+        return row;
+      },
+      findMany: async ({
+        where,
+        orderBy,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: Record<string, "asc" | "desc">;
+      }) => sortRows(rows.filter((r) => genericMatch(r, where)), orderBy),
+      count: async ({ where }: { where?: Record<string, unknown> }) =>
+        rows.filter((r) => genericMatch(r, where)).length,
+    };
+  }
+
+  /**
+   * Mirror-table model with the ingest service's exact needs: `createMany` that
+   * honors `skipDuplicates` on the `(appKey, sourceEventId)` unique, plus reads
+   * for tests. Mirrors Prisma's semantics closely enough for the drain/dedup tests.
+   */
+  private usageEventModel() {
+    const rows = this.store.usageEvent;
+    const key = (r: Row) => `${String(r.appKey)}::${String(r.sourceEventId)}`;
+    return {
+      createMany: async ({
+        data,
+        skipDuplicates,
+      }: {
+        data: Record<string, unknown>[];
+        skipDuplicates?: boolean;
+      }) => {
+        const seen = new Set(rows.map(key));
+        let count = 0;
+        for (const d of data) {
+          const row: Row = { id: this.nextId("ue"), ingestedAt: new Date(), ...d };
+          const k = key(row);
+          if (skipDuplicates && seen.has(k)) continue;
+          seen.add(k);
+          rows.push(row);
+          count += 1;
+        }
+        return { count };
+      },
+      findMany: async ({
+        where,
+        orderBy,
+        take,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: Record<string, "asc" | "desc">;
+        take?: number;
+      }) => {
+        let out = sortRows(rows.filter((r) => genericMatch(r, where)), orderBy);
+        if (typeof take === "number") out = out.slice(0, take);
+        return out;
+      },
+      count: async ({ where }: { where?: Record<string, unknown> }) =>
+        rows.filter((r) => genericMatch(r, where)).length,
+      aggregate: async ({ where }: { where?: Record<string, unknown> }) => {
+        const matched = rows.filter((r) => genericMatch(r, where));
+        let max: Date | null = null;
+        for (const r of matched) {
+          const o = r.occurredAt as Date | undefined;
+          if (o && (max === null || o > max)) max = o;
+        }
+        return { _max: { occurredAt: max } };
+      },
+      deleteMany: async ({ where }: { where?: Record<string, unknown> }) => {
+        let count = 0;
+        for (let i = rows.length - 1; i >= 0; i -= 1) {
+          if (genericMatch(rows[i]!, where)) {
+            rows.splice(i, 1);
+            count += 1;
+          }
+        }
+        return { count };
+      },
+    };
+  }
+
+  /** Per-app cursor with `findUnique`/`upsert` on the unique `appKey`. */
+  private usageSyncCursorModel() {
+    const rows = this.store.usageSyncCursor;
+    return {
+      findUnique: async ({ where }: { where: { appKey: string } }) =>
+        rows.find((r) => r.appKey === where.appKey) ?? null,
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { appKey: string };
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => {
+        const existing = rows.find((r) => r.appKey === where.appKey);
+        if (existing) {
+          applyUpdate(existing, { ...update, updatedAt: new Date() });
+          return existing;
+        }
+        const row: Row = { id: this.nextId("usc"), updatedAt: new Date(), ...create };
+        rows.push(row);
+        return row;
+      },
+    };
+  }
+
+  private badgeGraphicModel() {
+    const rows = this.store.badgeGraphic;
+    return {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        if (
+          rows.some(
+            (r) => r.appKey === data.appKey && r.slug === data.slug,
+          )
+        ) {
+          throw p2002("BadgeGraphic_appKey_slug_key");
+        }
+        const row: Row = {
+          id: this.nextId("bg"),
+          status: "ACTIVE",
+          textBaked: true,
+          sortOrder: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ...data,
+        };
+        rows.push(row);
+        return row;
+      },
+      findFirst: async ({
+        where,
+        orderBy,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: Record<string, "asc" | "desc">;
+      }) => sortRows(rows.filter((r) => genericMatch(r, where)), orderBy)[0] ?? null,
+      findMany: async ({
+        where,
+        orderBy,
+      }: {
+        where?: Record<string, unknown>;
+        orderBy?: Record<string, "asc" | "desc"> | Array<Record<string, "asc" | "desc">>;
+      }) => {
+        let out = rows.filter((r) => genericMatch(r, where));
+        if (orderBy) {
+          const orders = Array.isArray(orderBy) ? orderBy : [orderBy];
+          for (const ob of [...orders].reverse()) {
+            out = sortRows(out, ob);
+          }
+        }
+        return out;
+      },
+      update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const row = rows.find((r) => r.id === where.id);
+        if (!row) throw p2025();
+        applyUpdate(row, { ...data, updatedAt: new Date() });
+        return row;
+      },
+      delete: async ({ where }: { where: { id: string } }) => {
+        const i = rows.findIndex((r) => r.id === where.id);
+        if (i < 0) throw p2025();
+        return rows.splice(i, 1)[0]!;
+      },
+    };
   }
 
   /**
@@ -689,11 +977,28 @@ function fieldMatch(value: unknown, cond: unknown): boolean {
       .toLowerCase()
       .includes(String(c.contains).toLowerCase());
   }
-  if ("lte" in c) return (value as Date) <= (c.lte as Date);
-  if ("gte" in c) return (value as Date) >= (c.gte as Date);
-  if ("lt" in c) return (value as Date) < (c.lt as Date);
-  if ("gt" in c) return (value as Date) > (c.gt as Date);
+  // Range operators are CONJUNCTIVE (Prisma ANDs them): a `{ gte, lt }` window must
+  // satisfy BOTH bounds, so evaluate every present bound instead of returning on the
+  // first. `cmp` returns -1/0/1 for Date, number, and bigint alike (Dates via epoch ms;
+  // bigint compared as bigint so large `sourceSeq` cursors keep full precision).
+  const rangeKeys = ["lte", "gte", "lt", "gt"] as const;
+  if (rangeKeys.some((k) => k in c)) {
+    if ("lte" in c && cmp(value, c.lte) > 0) return false;
+    if ("gte" in c && cmp(value, c.gte) < 0) return false;
+    if ("lt" in c && cmp(value, c.lt) >= 0) return false;
+    if ("gt" in c && cmp(value, c.gt) <= 0) return false;
+    return true;
+  }
   return false;
+}
+
+/** Order two orderable values (Date/number/bigint) as -1/0/1. Dates compare by epoch ms. */
+function cmp(a: unknown, b: unknown): number {
+  const an: number | bigint = a instanceof Date ? a.getTime() : (a as number | bigint);
+  const bn: number | bigint = b instanceof Date ? b.getTime() : (b as number | bigint);
+  if (an < bn) return -1;
+  if (an > bn) return 1;
+  return 0;
 }
 
 /** Generic `where` matcher (top-level AND of fields, with `OR` arrays). */

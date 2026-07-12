@@ -65,5 +65,22 @@ export function verifyShopToken(token: string): ShopTokenClaims | null {
 export function isAllowedOrigin(origin: string, shop: string): boolean {
   if (origin === "https://admin.shopify.com") return true;
   if (origin === `https://${shop}`) return true;
+  // Local dev: same-origin widget on the CP dev server, Badgy on localhost, or a
+  // Shopify CLI tunnel origin during embedded-app testing.
+  if (getConfig().NODE_ENV === "development") {
+    if (
+      origin.startsWith("http://localhost:") ||
+      origin.startsWith("http://127.0.0.1:")
+    ) {
+      return true;
+    }
+    if (
+      /^https:\/\/[a-z0-9-]+\.(trycloudflare\.com|ngrok-free\.app|ngrok-free\.dev|ngrok\.io)$/.test(
+        origin,
+      )
+    ) {
+      return true;
+    }
+  }
   return false;
 }

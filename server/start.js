@@ -23,6 +23,19 @@ import {
 import { scheduleSlaSweep, startSlaWorker } from "./workers/slaSweep.js";
 import { scheduleOpsRollup, startOpsRollupWorker } from "./workers/opsRollup.js";
 import { scheduleGrowthRollup, startGrowthRollupWorker } from "./workers/growthRollup.js";
+import {
+  scheduleUsageIngest,
+  scheduleUsageMirrorPrune,
+  startUsageIngestWorker,
+} from "./workers/usageIngest.js";
+import {
+  scheduleUsageRollupIncremental,
+  scheduleUsageRollupFinalize,
+  scheduleUsageCohort,
+  scheduleUsageAlertEval,
+  startUsageRollupWorker,
+} from "./workers/usageRollup.js";
+import { scheduleUsageDigest, startUsageDigestWorker } from "./workers/usageDigest.js";
 import { initObservability } from "./lib/observability.js";
 
 initObservability("web");
@@ -95,6 +108,46 @@ startGrowthRollupWorker();
 scheduleGrowthRollup("saleswitch").catch((err) => {
   // eslint-disable-next-line no-console
   console.error("Failed to schedule growth rollup:", err);
+});
+
+// Usage-event ingestion + mirror prune — usage-analytics Phase 2b.
+startUsageIngestWorker();
+scheduleUsageIngest("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule usage ingest:", err);
+});
+scheduleUsageMirrorPrune("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule usage mirror prune:", err);
+});
+
+// Usage-metric rollups + cohort assignment — usage-analytics Phase 3. Hourly
+// incremental (today), daily finalize (yesterday + retention), nightly cohort
+// snapshots. Reads the CP mirror, writes UsageMetricDaily / UsageCohortSnapshot.
+startUsageRollupWorker();
+scheduleUsageRollupIncremental("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule usage rollup (incremental):", err);
+});
+scheduleUsageRollupFinalize("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule usage rollup (finalize):", err);
+});
+scheduleUsageCohort("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule usage cohort assignment:", err);
+});
+
+// Usage alerts + weekly digest — usage-analytics Phase 5. The alert eval is chained off
+// the finalize (finalized numbers only); this standalone schedule is the safety net.
+scheduleUsageAlertEval("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule usage alert eval:", err);
+});
+startUsageDigestWorker();
+scheduleUsageDigest("saleswitch").catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error("Failed to schedule usage weekly digest:", err);
 });
 
 const port = process.env.PORT || 3000;

@@ -11,11 +11,11 @@ describe("directory search/sort/pagination", () => {
   });
 
   it("search spans email and name (not just domain)", async () => {
-    const byEmail = await source.queryShops({ search: "boldbrew.example" });
-    expect(byEmail.rows.map((r) => r.shopDomain)).toContain("bold-brew.myshopify.com");
+    const byEmail = await source.queryShops({ search: "hello@boldbrew" });
+    expect(byEmail.rows.map((r) => r.shopDomain)).toContain("bold-brew-coffee.myshopify.com");
 
-    const byName = await source.queryShops({ search: "Cedar" });
-    expect(byName.rows.map((r) => r.shopDomain)).toContain("cedar-co.myshopify.com");
+    const byName = await source.queryShops({ search: "Cascade" });
+    expect(byName.rows.map((r) => r.shopDomain)).toContain("cascade-outdoors.myshopify.com");
   });
 
   it("sort by installDate desc orders newest-first", async () => {

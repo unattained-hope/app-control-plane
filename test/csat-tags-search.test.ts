@@ -116,3 +116,15 @@ describe("ConversationService.search", () => {
     expect(paged.truncated).toBe(true);
   });
 });
+
+describe("ConversationService.unreadTotal", () => {
+  it("sums unread counts across open conversations only", async () => {
+    const db = new FakeDb();
+    seedConversation(db, "c1", { unreadCount: 2 });
+    seedConversation(db, "c2", { unreadCount: 3 });
+    seedConversation(db, "c3", { unreadCount: 5, status: "CLOSED" });
+
+    const svc = new ConversationService(db as never);
+    expect(await svc.unreadTotal("saleswitch")).toBe(5);
+  });
+});

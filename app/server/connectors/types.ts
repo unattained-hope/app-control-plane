@@ -83,6 +83,32 @@ export interface GuardedAction {
 }
 
 /**
+ * One usage event as exported by an app (usage-analytics Phase 2b). A plain
+ * common shape — deliberately NOT imported from the app; the app maps its own
+ * columns to this. `seq` is the source's monotonic cursor value; it is a string
+ * on the wire because it is a BigInt (JSON has no native BigInt).
+ */
+export interface MirroredUsageEvent {
+  readonly id: string; // the source's per-event id — the dedupe key
+  readonly seq: string; // monotonic cursor value, BigInt-as-string
+  readonly shopDomain: string;
+  readonly userId: string | null;
+  readonly name: string;
+  readonly category: string;
+  readonly source: string;
+  readonly properties: Record<string, unknown> | null;
+  readonly impersonated: boolean;
+  readonly occurredAt: string; // ISO
+}
+
+/** One cursor page of usage events. `nextSinceSeq` is a BigInt-as-string. */
+export interface UsageEventPage {
+  readonly events: readonly MirroredUsageEvent[];
+  readonly nextSinceSeq: string;
+  readonly hasMore: boolean;
+}
+
+/**
  * Read-only-ish Prisma surface a connector needs. Typed loosely as `unknown` here
  * to avoid the core importing the SaleSwitch generated client; the concrete
  * connector binds its own client. Reads are expressed through Prisma (never raw
@@ -95,6 +121,15 @@ export interface AppConnector {
   getSubscription(shop: string): Promise<SubscriptionState>;
   computeKpis(): Promise<Kpi[]>;
   readonly actions: readonly GuardedAction[];
+  /**
+   * Pull a cursor page of usage events (usage-analytics Phase 2b). OPTIONAL: an
+   * app that doesn't emit usage events omits it, and the ingest worker skips it.
+   * `sinceSeq` is an exclusive lower bound; `limit` is a hint the endpoint may cap.
+   */
+  fetchUsageEvents?(args: {
+    readonly sinceSeq: bigint;
+    readonly limit: number;
+  }): Promise<UsageEventPage>;
   /** Dispose the long-lived client (graceful shutdown). */
   disconnect(): Promise<void>;
 }

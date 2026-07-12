@@ -8,10 +8,11 @@ import {
   useRouteError,
   type LinksFunction,
 } from "react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { trpc } from "~/lib/trpc.js";
+import { AppProvider, useAppContext } from "~/lib/appContext.js";
 import appStylesHref from "~/styles/app.css?url";
 import { THEME_INIT_SCRIPT } from "~/lib/theme.js";
 
@@ -41,19 +42,33 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** App root — wires the tRPC + React Query providers around the route tree. */
-export default function Root() {
+/** tRPC + React Query wired to the active `?app=` search param. */
+function TrpcProviders({ children }: { children: React.ReactNode }) {
+  const { appKey } = useAppContext();
   const [queryClient] = useState(() => new QueryClient());
-  const [trpcClient] = useState(() =>
-    trpc.createClient({ links: [httpBatchLink({ url: "/trpc" })] }),
+  const trpcClient = useMemo(
+    () =>
+      trpc.createClient({
+        links: [httpBatchLink({ url: `/trpc?app=${encodeURIComponent(appKey)}` })],
+      }),
+    [appKey],
   );
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </trpc.Provider>
+  );
+}
+
+/** App root — wires the tRPC + React Query providers around the route tree. */
+export default function Root() {
+  return (
+    <AppProvider>
+      <TrpcProviders>
+        <Outlet />
+      </TrpcProviders>
+    </AppProvider>
   );
 }
 

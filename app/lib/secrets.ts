@@ -22,6 +22,12 @@ export interface SecretsManager {
    * multi-app stores one ref per registered app. Throws on an unknown ref.
    */
   resolveWebhookSecret(webhookSecretRef: string): Promise<string>;
+  /**
+   * Resolve the HMAC shared secret used to SIGN internal-API requests to an app
+   * (usage-analytics Phase 2b). Must equal the app's own internal-API secret.
+   * Throws on an unknown ref (fail-closed — ingestion refuses to call unsigned).
+   */
+  resolveInternalApiSecret(internalApiSecretRef: string): Promise<string>;
 }
 
 /** The single known replica ref in the MVP. Stored on the seeded App row. */
@@ -32,6 +38,9 @@ export const SALESWITCH_REPLICA_REF = "secret:saleswitch/replica-readonly";
  * per-app `webhookSecretRef` on the registry row (mirroring `replicaRef`).
  */
 export const SALESWITCH_WEBHOOK_SECRET_REF = "secret:saleswitch/webhook-signing";
+
+/** The HMAC signing-secret ref for the SaleSwitch internal API (usage ingestion). */
+export const SALESWITCH_INTERNAL_API_REF = "secret:saleswitch/internal-api";
 
 class EnvBackedSecretsManager implements SecretsManager {
   async resolveReplicaUrl(replicaRef: string): Promise<string> {
@@ -52,6 +61,16 @@ class EnvBackedSecretsManager implements SecretsManager {
     throw new Error(
       `Unknown webhookSecretRef "${webhookSecretRef}" — no secret binding. ` +
         `Webhook verification fails closed rather than accepting an unsigned event.`,
+    );
+  }
+
+  async resolveInternalApiSecret(internalApiSecretRef: string): Promise<string> {
+    if (internalApiSecretRef === SALESWITCH_INTERNAL_API_REF) {
+      return getConfig().SALESWITCH_INTERNAL_API_SECRET;
+    }
+    throw new Error(
+      `Unknown internalApiSecretRef "${internalApiSecretRef}" — no secret binding. ` +
+        `Usage ingestion fails closed rather than calling the app API unsigned.`,
     );
   }
 }

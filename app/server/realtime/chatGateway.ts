@@ -92,9 +92,25 @@ export function attachChatGateway(httpServer: HttpServer): Server {
         io.to(roomFor(payload.conversationId)).emit("message", msg);
       });
 
+      socket.on(
+        "agent:typing",
+        (payload: { conversationId: string; typing: boolean; agentName?: string }) => {
+          if (auth.role === "VIEWER") return;
+          io.to(roomFor(payload.conversationId)).emit("agent:typing", {
+            conversationId: payload.conversationId,
+            typing: payload.typing,
+            agentName: payload.agentName ?? null,
+          });
+        },
+      );
+
       socket.on("agent:join", (conversationId: string) => {
         void socket.join(roomFor(conversationId));
         void conversations.markRead(conversationId);
+      });
+
+      socket.on("agent:inbox:subscribe", (appKey: string) => {
+        void socket.join(inboxRoomFor(appKey));
       });
       return;
     }
@@ -121,6 +137,9 @@ export function attachChatGateway(httpServer: HttpServer): Server {
           attachmentUrl: payload.attachmentUrl ?? null,
         });
         io.to(roomFor(payload.conversationId)).emit("message", msg);
+        io.to(inboxRoomFor(auth.appKey)).emit("inbox:activity", {
+          conversationId: payload.conversationId,
+        });
 
         // Rule-based routing keyed off the merchant's message (cp-conversation-
         // routing). Idempotent — only an unrouted conversation is routed — so this
@@ -187,4 +206,8 @@ export function attachChatGateway(httpServer: HttpServer): Server {
 
 function roomFor(conversationId: string): string {
   return `conversation:${conversationId}`;
+}
+
+function inboxRoomFor(appKey: string): string {
+  return `inbox:${appKey}`;
 }

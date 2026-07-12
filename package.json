@@ -20,7 +20,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "import:badgy-badges": "node scripts/import-badgy-badge-catalog.mjs",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@casl/ability": "^6.7.1",
@@ -43,9 +45,12 @@
     "express": "^4.21.0",
     "ioredis": "^5.4.1",
     "isbot": "^5.1.0",
+    "lucide-react": "^1.24.0",
+    "pg": "^8.22.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router": "^7.0.0",
+    "sharp": "^0.33.5",
     "socket.io": "^4.8.0",
     "socket.io-client": "^4.8.0",
     "zod": "^3.23.8"
@@ -54,6 +59,7 @@
     "@playwright/test": "^1.61.0",
     "@react-router/dev": "^7.0.0",
     "@types/node": "^22.5.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.5.0",

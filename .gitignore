@@ -12,3 +12,6 @@ coverage
 test-results
 playwright-report
 .cache
+
+# Local uploaded badge graphic assets (cp-app-settings).
+data/badge-graphics/

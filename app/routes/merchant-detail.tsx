@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   Badge,
@@ -9,6 +9,11 @@ import {
   Grid,
   List,
   ListItem,
+  Tab,
+  TabGroup,
+  TabList,
+  TabPanel,
+  TabPanels,
   Text,
   TextInput,
   Textarea,
@@ -21,6 +26,7 @@ import type { AppRouter } from "~/server/trpc/root.js";
 type MerchantOverview = NonNullable<inferRouterOutputs<AppRouter>["directory"]["overview"]>;
 type ConversationSummary = MerchantOverview["conversations"][number];
 type AuditEntry = MerchantOverview["audit"][number];
+type ActivityEvent = inferRouterOutputs<AppRouter>["usage"]["activity"]["events"][number];
 
 /**
  * Merchant detail (cp-merchant-directory + cp-billing-read + cp-merchant-actions).
@@ -655,6 +661,146 @@ function AuditTrailCard({ audit }: { readonly audit: readonly AuditEntry[] }) {
   );
 }
 
+/**
+ * Merchant Activity feed (usage-analytics Phase 4). The shop's recent usage events
+ * (newest first), cursor-paginated with a hard page cap, read from the control plane's
+ * OWN mirror via `trpc.usage.activity` — the ONE permitted raw-event read (documented in
+ * the usage router). Impersonated events are visibly badged (support context). Pages
+ * accumulate as the operator clicks "Load older"; a stable cursor (the source seq) walks
+ * backwards so a mid-stream ingest can't skip or duplicate rows.
+ */
+function ActivityTab({ shop }: { readonly shop: string }) {
+  const [pages, setPages] = useState<ActivityEvent[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadedInitial, setLoadedInitial] = useState(false);
+  // `enabled: false` so we control fetching explicitly (initial load + each "load older").
+  // The query key carries `before: cursor`, so a refetch always pulls the next older page.
+  const q = trpc.usage.activity.useQuery(
+    { shop, before: cursor },
+    { enabled: false, retry: false },
+  );
+
+  // Initial page load, once per shop.
+  useEffect(() => {
+    let cancelled = false;
+    void q.refetch().then((res) => {
+      if (!cancelled && res.data) {
+        setPages(res.data.events);
+        setCursor(res.data.nextCursor);
+        setLoadedInitial(true);
+      } else if (!cancelled) {
+        setLoadedInitial(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop]);
+
+  const loadOlder = () => {
+    void q.refetch().then((res) => {
+      if (res.data) {
+        setPages((prev) => [...prev, ...res.data!.events]);
+        setCursor(res.data.nextCursor);
+      }
+    });
+  };
+
+  if (q.isError) {
+    return (
+      <Card role="alert" aria-label="Activity load error">
+        <Title>Activity</Title>
+        <Text className="mt-2">Couldn't load this shop's activity.</Text>
+        <Text className="mt-1 text-xs text-tremor-content-subtle">{q.error.message}</Text>
+      </Card>
+    );
+  }
+
+  if (!loadedInitial || (q.isFetching && pages.length === 0)) {
+    return (
+      <Card aria-label="Activity" aria-busy="true">
+        <Title>Activity</Title>
+        <Text className="mt-2" role="status">
+          Loading activity…
+        </Text>
+      </Card>
+    );
+  }
+
+  if (pages.length === 0) {
+    return (
+      <Card aria-label="Activity">
+        <Title>Activity</Title>
+        <Text className="mt-2 text-tremor-content-subtle" role="status">
+          No usage events recorded for this shop yet.
+        </Text>
+      </Card>
+    );
+  }
+
+  const hasMore = cursor !== null;
+  return (
+    <Card aria-label="Activity">
+      <Flex justifyContent="between" alignItems="baseline">
+        <Title>Activity</Title>
+        <Text className="text-xs text-tremor-content-subtle">Newest first · from the CP mirror</Text>
+      </Flex>
+      <List className="mt-3" aria-label="Recent usage events">
+        {pages.map((e) => (
+          <ListItem key={e.id} className="flex-col items-start">
+            <Flex justifyContent="between" alignItems="baseline" className="w-full gap-2">
+              <div className="flex items-center gap-2">
+                <code className="text-xs">{e.name}</code>
+                {e.impersonated ? (
+                  <Badge color="amber" aria-label="Impersonated event">
+                    Impersonated
+                  </Badge>
+                ) : null}
+              </div>
+              <Text className="text-xs text-tremor-content-subtle">
+                <time dateTime={e.occurredAt}>{formatTimestamp(e.occurredAt)}</time>
+              </Text>
+            </Flex>
+            <Text className="text-xs text-tremor-content-subtle">
+              {e.category}
+              {formatEventProps(e.properties) ? ` · ${formatEventProps(e.properties)}` : ""}
+            </Text>
+          </ListItem>
+        ))}
+      </List>
+      {hasMore ? (
+        <div className="mt-3">
+          <Button
+            size="xs"
+            variant="secondary"
+            type="button"
+            onClick={loadOlder}
+            loading={q.isFetching}
+            disabled={q.isFetching}
+          >
+            Load older
+          </Button>
+        </div>
+      ) : (
+        <Text className="mt-3 text-xs text-tremor-content-subtle">End of history.</Text>
+      )}
+    </Card>
+  );
+}
+
+/** Render a couple of an event's key properties compactly (best-effort, PII-free keys). */
+function formatEventProps(props: Record<string, unknown> | null): string {
+  if (!props) return "";
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(props)) {
+    if (v === null || typeof v === "object") continue;
+    parts.push(`${k}: ${String(v)}`);
+    if (parts.length >= 3) break;
+  }
+  return parts.join(", ");
+}
+
 export default function MerchantDetail() {
   const params = useParams();
   const shop = params.shop ?? "";
@@ -734,23 +880,38 @@ export default function MerchantDetail() {
         <AsOf iso={detail.asOf} />
       </div>
 
-      <Grid numItemsLg={2} className="gap-4">
-        <ShopInfoCard shop={shop} detail={detail} />
-        <HealthCard shop={shop} />
-        <BillingCard shop={shop} />
-        <TagsCard
-          shop={shop}
-          tags={detail.tags}
-          onChanged={() => void detailQuery.refetch()}
-        />
-        <NotesCard
-          shop={shop}
-          notes={detail.notes}
-          onChanged={() => void detailQuery.refetch()}
-        />
-        <ConversationHistoryCard conversations={detail.conversations} />
-        <AuditTrailCard audit={detail.audit} />
-      </Grid>
+      <TabGroup>
+        <TabList aria-label="Merchant sections">
+          <Tab>Overview</Tab>
+          <Tab>Activity</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            <Grid numItemsLg={2} className="mt-4 gap-4">
+              <ShopInfoCard shop={shop} detail={detail} />
+              <HealthCard shop={shop} />
+              <BillingCard shop={shop} />
+              <TagsCard
+                shop={shop}
+                tags={detail.tags}
+                onChanged={() => void detailQuery.refetch()}
+              />
+              <NotesCard
+                shop={shop}
+                notes={detail.notes}
+                onChanged={() => void detailQuery.refetch()}
+              />
+              <ConversationHistoryCard conversations={detail.conversations} />
+              <AuditTrailCard audit={detail.audit} />
+            </Grid>
+          </TabPanel>
+          <TabPanel>
+            <div className="mt-4">
+              <ActivityTab shop={shop} />
+            </div>
+          </TabPanel>
+        </TabPanels>
+      </TabGroup>
     </main>
   );
 }

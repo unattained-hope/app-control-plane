@@ -1,11 +1,13 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { getConfig } from "~/lib/config.js";
+import { captureError } from "~/lib/observability.js";
 import { getDb } from "../db.js";
 import { getComplianceService } from "./complianceService.js";
 import { KPI_QUEUE_NAME } from "../workers/kpiRollup.js";
 import { WEBHOOK_QUEUE_NAME } from "../workers/webhookProcess.js";
 import { COMPLIANCE_SWEEP_QUEUE_NAME } from "../workers/complianceSweep.js";
 import { SLA_SWEEP_QUEUE_NAME } from "../workers/slaSweep.js";
+import { USAGE_INGEST_QUEUE_NAME } from "../workers/usageIngest.js";
 
 /**
  * Portfolio ops metrics (cp-ops-monitoring). Reads LIVE BullMQ job counts (no app-DB
@@ -30,6 +32,7 @@ export const MONITORED_QUEUES = [
   COMPLIANCE_SWEEP_QUEUE_NAME,
   SLA_SWEEP_QUEUE_NAME,
   OPS_ROLLUP_QUEUE_NAME,
+  USAGE_INGEST_QUEUE_NAME,
 ] as const;
 
 export interface QueueStat {
@@ -54,6 +57,12 @@ export interface OpsGauges {
   readonly webhookFailed: number;
   readonly webhookDeadLetter: number;
   readonly complianceBreaching: number;
+  /**
+   * Seconds since the newest mirrored usage event for the app (usage-analytics
+   * Phase 2b). -1 when no usage events have ever been ingested (nothing to lag
+   * against). A large value while the app is emitting means ingestion stalled.
+   */
+  readonly usageIngestLagSeconds: number;
 }
 
 export interface OpsSnapshot {
@@ -155,15 +164,24 @@ export class OpsMetricsService {
 
   /** Control-plane gauges (CP-table reads only — never the app DB). */
   async collectGauges(appKey: string, now: Date = new Date()): Promise<OpsGauges> {
-    const [webhookFailed, webhookDeadLetter, breaching] = await Promise.all([
+    const [webhookFailed, webhookDeadLetter, breaching, usageAgg] = await Promise.all([
       this.db.webhookEvent.count({ where: { appKey, status: "FAILED" } }),
       this.db.webhookEvent.count({ where: { appKey, status: "DEAD_LETTER" } }),
       this.compliance.listBreaching(appKey, undefined, now),
+      this.db.usageEvent.aggregate({
+        where: { appKey },
+        _max: { occurredAt: true },
+      }),
     ]);
+    const newest = usageAgg._max.occurredAt;
+    const usageIngestLagSeconds = newest
+      ? Math.max(0, Math.round((now.getTime() - newest.getTime()) / 1000))
+      : -1;
     return {
       webhookFailed,
       webhookDeadLetter,
       complianceBreaching: breaching.length,
+      usageIngestLagSeconds,
     };
   }
 
@@ -212,6 +230,13 @@ export class OpsMetricsService {
     lines.push("# HELP control_plane_compliance_breaching DSR requests near/past their SLA");
     lines.push("# TYPE control_plane_compliance_breaching gauge");
     lines.push(`control_plane_compliance_breaching{app="${app}"} ${gauges.complianceBreaching}`);
+    lines.push(
+      "# HELP control_plane_usage_ingest_lag_seconds Seconds since the newest mirrored usage event (-1 = none)",
+    );
+    lines.push("# TYPE control_plane_usage_ingest_lag_seconds gauge");
+    lines.push(
+      `control_plane_usage_ingest_lag_seconds{app="${app}"} ${gauges.usageIngestLagSeconds}`,
+    );
 
     return lines.join("\n") + "\n";
   }
@@ -247,6 +272,28 @@ export class OpsMetricsService {
       value: snap.gauges.complianceBreaching,
       asOf: now,
     });
+    rows.push({
+      appKey,
+      metric: "ops.usage.ingest_lag_seconds",
+      value: snap.gauges.usageIngestLagSeconds,
+      asOf: now,
+    });
+    // Ingestion-lag alert (usage-analytics Phase 2b): fire when the newest mirrored
+    // event is older than the threshold — a stalled pipeline is worse than a loud
+    // one. -1 (never ingested) is not a stall, so it is excluded.
+    const lagThresholdSeconds = getConfig().USAGE_INGEST_LAG_ALERT_MINUTES * 60;
+    if (
+      snap.gauges.usageIngestLagSeconds >= 0 &&
+      snap.gauges.usageIngestLagSeconds > lagThresholdSeconds
+    ) {
+      captureError(
+        new Error(
+          `usage ingestion lag ${snap.gauges.usageIngestLagSeconds}s exceeds ` +
+            `${lagThresholdSeconds}s for app "${appKey}"`,
+        ),
+        { alert: "usage-ingest-lag", appKey, lagSeconds: snap.gauges.usageIngestLagSeconds },
+      );
+    }
     // SLO sample (cp-slo-alerting): the webhook-delivery error ratio over a trailing
     // window, persisted per tick so sloService can compute multi-window burn rate.
     rows.push({

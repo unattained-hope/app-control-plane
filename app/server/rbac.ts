@@ -27,8 +27,15 @@ import type { Role } from "@prisma/client";
  * Tier 3 (cp-feature-flags / cp-announcements-nps) adds two ADMIN-only abilities:
  *   - `flags:manage`        → manage the feature-flag registry + per-shop overrides.
  *   - `announcements:manage`→ publish in-app announcements to merchants.
+ * App settings (cp-app-settings) adds:
+ *   - `settings:manage`     → manage portfolio-wide app config (badge gallery, etc.).
  *   Merchant health reads stay under `view`; the merchant-facing surfaces (flag read
  *   endpoint, NPS, self-serve billing) authenticate by shop token, not CASL.
+ *
+ * Usage alerts (cp usage-alerts-digest, P5) adds one ADMIN-only ability:
+ *   - `usage_alerts:manage` → manage the usage threshold-alert rule registry
+ *     (enable/disable/edit). Saved explorer views are owner-scoped per admin and gated
+ *     by `view` (any authenticated admin manages ONLY their own), not this ability.
  */
 export type Action =
   | "view" // read merchants, dashboard, merchant data, billing
@@ -43,7 +50,9 @@ export type Action =
   | "ops:view" // read the ops/monitoring surface + failed-delivery view (cp-ops-monitoring)
   | "impersonate" // impersonate a user — ADMIN + an active grant (cp-break-glass-rbac)
   | "flags:manage" // manage feature flags + per-shop overrides (cp-feature-flags)
-  | "announcements:manage"; // publish in-app announcements (cp-announcements-nps)
+  | "announcements:manage" // publish in-app announcements (cp-announcements-nps)
+  | "settings:manage" // manage app-specific settings (cp-app-settings)
+  | "usage_alerts:manage"; // manage usage threshold-alert rules (cp usage-alerts-digest)
 
 export type Subject = "all";
 
@@ -78,6 +87,10 @@ export function defineAbilityFor(role: Role): AppAbility {
     // action — ADMIN-only (cp-feature-flags / cp-announcements-nps).
     can("flags:manage", "all");
     can("announcements:manage", "all");
+    can("settings:manage", "all");
+    // P5: tuning usage alert thresholds is a portfolio-wide, redeploy-free control —
+    // ADMIN-only (cp usage-alerts-digest).
+    can("usage_alerts:manage", "all");
   }
 
   return build();

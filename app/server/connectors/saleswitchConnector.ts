@@ -8,7 +8,12 @@ import type {
   MerchantPage,
   MerchantQuery,
   SubscriptionState,
+  UsageEventPage,
 } from "./types.js";
+import {
+  buildSaleSwitchInternalClient,
+  type SaleSwitchInternalClient,
+} from "./saleswitchInternalClient.js";
 
 /**
  * SaleSwitch connector (cp-app-registry-connector). Holds ONE long-lived client
@@ -55,13 +60,30 @@ export class SaleSwitchConnector implements AppConnector {
   readonly key = APP_KEY;
   readonly actions: readonly GuardedAction[];
 
-  constructor(private readonly source: ReplicaReadSource) {
+  /**
+   * Present ONLY when the internal-API client is configured (usage-analytics
+   * Phase 2b). Assigned as an optional instance member so `connector.fetchUsageEvents`
+   * is `undefined` when ingestion isn't set up — letting the worker skip the app
+   * exactly as the optional interface method intends.
+   */
+  readonly fetchUsageEvents?: (args: {
+    sinceSeq: bigint;
+    limit: number;
+  }) => Promise<UsageEventPage>;
+
+  constructor(
+    private readonly source: ReplicaReadSource,
+    internalClient?: SaleSwitchInternalClient | null,
+  ) {
     // Raw SQL is prohibited (replica routing would be bypassed).
     if (!source.isReplicaOnly) {
       throw new Error(
         "SaleSwitchConnector requires a replica-only read source; refusing a source " +
           "that can reach the primary.",
       );
+    }
+    if (internalClient) {
+      this.fetchUsageEvents = (args) => internalClient.fetchUsageEvents(args);
     }
     // App-backed actions only appear when the narrow SaleSwitch admin API exists (D2).
     const appBacked: GuardedAction[] = isAppAdminApiConfigured()
@@ -171,5 +193,8 @@ export async function buildSaleSwitchConnector(
   // Resolving proves the secrets seam works and fails closed on an unknown ref
   // (it never falls back to a primary/raw DSN — cp-app-registry-connector).
   await getSecretsManager().resolveReplicaUrl(replicaRef);
-  return new SaleSwitchConnector(source);
+  // Build the signed internal-API client if usage ingestion is configured; null
+  // otherwise, in which case the connector omits fetchUsageEvents (worker skips it).
+  const internalClient = await buildSaleSwitchInternalClient();
+  return new SaleSwitchConnector(source, internalClient);
 }

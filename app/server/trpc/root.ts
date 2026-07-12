@@ -19,6 +19,9 @@ import { healthRouter } from "./routers/health.js";
 import { flagsRouter } from "./routers/flags.js";
 import { announcementsRouter } from "./routers/announcements.js";
 import { plansRouter } from "./routers/plans.js";
+import { badgeGraphicsRouter } from "./routers/badgeGraphics.js";
+import { usageRouter } from "./routers/usage.js";
+import { usageManagementRouter } from "./routers/usageManagement.js";
 
 /** The single tRPC root router — end-to-end typed first-party API. */
 export const appRouter = router({
@@ -41,6 +44,11 @@ export const appRouter = router({
   flags: flagsRouter,
   announcements: announcementsRouter,
   plans: plansRouter,
+  badgeGraphics: badgeGraphicsRouter,
+  // usage-analytics Phase 4 — usage dashboards (read-only, snapshot-sourced).
+  usage: usageRouter,
+  // usage-analytics Phase 5 — alert-rule management (ADMIN) + per-admin saved views.
+  usageManagement: usageManagementRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -13,8 +13,6 @@ import type {
  * to the replica, so directory behavior (search across domain/name/email, sort,
  * pagination) is exercised end-to-end without a database.
  */
-const SEED: RawShopRow[] = [];
-
 function mk(
   shopDomain: string,
   displayName: string | null,
@@ -39,7 +37,18 @@ function mk(
   };
 }
 
-export function makeFixtureSource(seed: RawShopRow[] = SEED): ReplicaReadSource {
+/** Deterministic fixture merchants for tests / non-dev environments. */
+export function defaultFixtureSeed(): RawShopRow[] {
+  return [
+    mk("aurora-threads.myshopify.com", "Aurora Threads", "owner@aurora.test", "active", "active", "Pro", 120, null),
+    mk("bold-brew-coffee.myshopify.com", "Bold Brew Coffee", "hello@boldbrew.test", "active", "active", "Starter", 90, null),
+    mk("cascade-outdoors.myshopify.com", "Cascade Outdoors", "team@cascade.test", "active", "active", "Pro", 60, null),
+    mk("delta-digital.myshopify.com", "Delta Digital", "ops@delta.test", "installing", "onboarding", null, 7, null),
+    mk("ember-home.myshopify.com", "Ember Home", "support@ember.test", "uninstalled", "churned", "Starter", 200, 14),
+  ];
+}
+
+export function makeFixtureSource(seed: RawShopRow[] = defaultFixtureSeed()): ReplicaReadSource {
   const data = [...seed];
 
   return {
