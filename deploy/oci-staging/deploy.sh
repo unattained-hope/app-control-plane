@@ -266,10 +266,33 @@ CONTROL_PLANE_DOMAIN="$(load_env_value CONTROL_PLANE_DOMAIN || true)"
 [[ -n "${CONTROL_PLANE_DOMAIN}" ]] \
   || fail "CONTROL_PLANE_DOMAIN is required in ${ENV_FILE}."
 
+POSTGRES_USER="$(load_env_value POSTGRES_USER || true)"
+POSTGRES_PASSWORD="$(load_env_value POSTGRES_PASSWORD || true)"
+POSTGRES_DB="$(load_env_value POSTGRES_DB || true)"
+[[ -n "${POSTGRES_USER}" && -n "${POSTGRES_PASSWORD}" && -n "${POSTGRES_DB}" ]] \
+  || fail "POSTGRES_USER, POSTGRES_PASSWORD, and POSTGRES_DB are required in ${ENV_FILE} (see .env.example). Do not rely on CONTROL_PLANE_DATABASE_URL alone — Compose builds that URL from these three."
+
 SALESWITCH_DOCKER_NETWORK="$(load_env_value SALESWITCH_DOCKER_NETWORK || true)"
 SALESWITCH_DOCKER_NETWORK="${SALESWITCH_DOCKER_NETWORK:-oci-staging_default}"
 docker network inspect "${SALESWITCH_DOCKER_NETWORK}" >/dev/null 2>&1 \
   || fail "Docker network ${SALESWITCH_DOCKER_NETWORK} not found. Start SaleSwitch staging first (its Caddy owns 80/443), or set SALESWITCH_DOCKER_NETWORK."
+
+# Guard against colliding with SaleSwitch's Compose project name.
+COMPOSE_PROJECT="$(
+  cd "${COMPOSE_DIR}"
+  docker compose config --format json 2>/dev/null \
+    | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+    | head -n 1
+)"
+if [[ -z "${COMPOSE_PROJECT}" ]]; then
+  COMPOSE_PROJECT="$(
+    cd "${COMPOSE_DIR}"
+    docker compose config 2>/dev/null | awk '/^name:/ { print $2; exit }'
+  )"
+fi
+[[ "${COMPOSE_PROJECT}" != "oci-staging" ]] \
+  || fail "Compose project name is 'oci-staging' (SaleSwitch). Set 'name: control-plane-staging' in docker-compose.yml and re-pull."
+
 
 git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
   || fail "${REPO_ROOT} is not inside a Git worktree."
@@ -291,6 +314,7 @@ validate_worktree
 
 echo "Branch: ${CURRENT_BRANCH} (upstream: ${UPSTREAM_REF})"
 echo "Domain: ${CONTROL_PLANE_DOMAIN}"
+echo "Compose project: ${COMPOSE_PROJECT:-control-plane-staging}"
 echo "SaleSwitch network: ${SALESWITCH_DOCKER_NETWORK}"
 
 stage "Update source"
@@ -313,7 +337,7 @@ SERVICE_MUTATION_STARTED=true
 stage "Start PostgreSQL and Redis"
 (
   cd "${COMPOSE_DIR}"
-  docker compose up -d postgres redis
+  docker compose up -d cp-postgres cp-redis
 )
 
 postgres_ready=false
@@ -321,7 +345,7 @@ redis_ready=false
 for ((attempt = 1; attempt <= WAIT_ATTEMPTS; attempt += 1)); do
   if (
     cd "${COMPOSE_DIR}"
-    docker compose exec -T postgres sh -c \
+    docker compose exec -T cp-postgres sh -c \
       'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"' >/dev/null 2>&1
   ); then
     postgres_ready=true
@@ -329,7 +353,7 @@ for ((attempt = 1; attempt <= WAIT_ATTEMPTS; attempt += 1)); do
 
   if (
     cd "${COMPOSE_DIR}"
-    [[ "$(docker compose exec -T redis redis-cli ping 2>/dev/null)" == "PONG" ]]
+    [[ "$(docker compose exec -T cp-redis redis-cli ping 2>/dev/null)" == "PONG" ]]
   ); then
     redis_ready=true
   fi
@@ -352,7 +376,7 @@ BACKUP_PATH="${BACKUP_DIR}/control-plane-pre-schema-${BACKUP_TIMESTAMP}-${BASHPI
 BACKUP_TEMP="${BACKUP_PATH}.tmp"
 (
   cd "${COMPOSE_DIR}"
-  docker compose exec -T postgres sh -c \
+  docker compose exec -T cp-postgres sh -c \
     'exec pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"'
 ) | gzip >"${BACKUP_TEMP}"
 gzip -t "${BACKUP_TEMP}"
@@ -385,7 +409,7 @@ stage "Start control-plane stack"
 stage "Verify services"
 REDIS_RESPONSE="$(
   cd "${COMPOSE_DIR}"
-  docker compose exec -T redis redis-cli ping
+  docker compose exec -T cp-redis redis-cli ping
 )"
 [[ "${REDIS_RESPONSE}" == "PONG" ]] || fail "Redis verification failed."
 echo "Redis: PONG"

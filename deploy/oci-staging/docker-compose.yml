@@ -1,5 +1,8 @@
 # Apoaap Control Plane staging stack for the shared OCI A1 VM (Arm64).
 #
+# Explicit project name — must NOT collide with SaleSwitch's `oci-staging`.
+name: control-plane-staging
+
 # Usage (on the VM, from this directory after cloning the repo):
 #   cp .env.example .env   # fill secrets + domain
 #   bash ./deploy.sh
@@ -8,7 +11,8 @@
 # and reverse-proxies CONTROL_PLANE_DOMAIN → control-plane:3000. Attach this
 # Compose project to SaleSwitch's Docker network via SALESWITCH_DOCKER_NETWORK.
 #
-# Public ports: none required. Postgres and Redis stay on this project's network.
+# Service hostnames use the `cp-` prefix so they do not clash with SaleSwitch's
+# `postgres` / `redis` on the shared Docker network.
 
 services:
   control-plane:
@@ -21,8 +25,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
-      CONTROL_PLANE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      REDIS_URL: redis://redis:6379
+      CONTROL_PLANE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@cp-postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://cp-redis:6379
       WORKOS_REDIRECT_URI: https://${CONTROL_PLANE_DOMAIN}/auth/callback
       BADGE_GRAPHIC_STORAGE_DIR: /data/badge-graphics
       BADGE_GRAPHIC_PUBLIC_BASE_URL: https://${CONTROL_PLANE_DOMAIN}
@@ -30,9 +34,9 @@ services:
     volumes:
       - badge_graphics:/data/badge-graphics
     depends_on:
-      postgres:
+      cp-postgres:
         condition: service_healthy
-      redis:
+      cp-redis:
         condition: service_healthy
     # Persistent entry attaches Socket.IO — never react-router-serve.
     command: ["node", "./build/server/prod.js"]
@@ -42,7 +46,7 @@ services:
       - default
       - saleswitch_proxy
 
-  postgres:
+  cp-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -60,7 +64,7 @@ services:
     mem_limit: 1024m
     cpus: 0.35
 
-  redis:
+  cp-redis:
     image: redis:7.2-alpine
     restart: unless-stopped
     command:
