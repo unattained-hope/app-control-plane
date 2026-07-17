@@ -89,8 +89,10 @@ files in terminal transcripts, tickets, or chat.
 
 Expected composition on staging (persistent process — not serverless):
 
-1. `control-plane` (or equivalent) — React Router 7 server (`server/start.js`):
-   HTTP/SSR, tRPC, Socket.IO chat gateway, and in-process BullMQ workers
+1. `control-plane` (or equivalent) — React Router 7 server (`build/server/prod.js`
+   from `server/prod.ts`): HTTP/SSR, tRPC resource routes, Socket.IO chat gateway,
+   and in-process BullMQ workers. **Do not use `react-router-serve`** — it never
+   attaches Socket.IO and `/socket.io` will 404.
 2. `postgres` — control-plane’s **own** PostgreSQL (users, conversations, audit,
    rollups, ops state). Never the SaleSwitch primary.
 3. `redis` — BullMQ queues + Socket.IO adapter
@@ -106,6 +108,28 @@ Architecture invariants that staging must preserve:
   Prisma transaction as the effect.
 - Badge graphic binaries live on a persistent volume (`BADGE_GRAPHIC_STORAGE_DIR`);
   leave that volume alone during routine Docker cleanup.
+
+## Production start command (Socket.IO)
+
+The control-plane container must run the bundled persistent entry:
+
+```bash
+node ./build/server/prod.js
+# equivalent: npm run start
+```
+
+If Compose overrides the image `CMD` with `react-router-serve ./build/server/index.js`,
+agent chat WebSockets fail with RR `No route matches URL "/socket.io"`. Change the
+service command to the line above (keep any `prisma migrate deploy` / `db push`
+prefix if you still run schema sync on start).
+
+Pass/fail after redeploy:
+
+```bash
+curl -i -u 'USER:PASS' \
+  "https://staging.admin.apoaap.shop/socket.io/?EIO=4&transport=polling"
+# Expect HTTP 200 and a body starting with 0{"sid":...}
+```
 
 ## Configuration and secrets
 
@@ -276,6 +300,9 @@ Useful symptom mapping:
 - Usage ingest idle: `SALESWITCH_INTERNAL_API_URL` / secret empty or mismatched
 - SaleSwitch deploy “ate” CP: unlikely if orphans are preserved — check whether a
   compose project name collision or manual `--remove-orphans` was used
+- Agent chat `wss://…/socket.io` refused / RR HTML `No route matches URL "/socket.io"`:
+  container is running `react-router-serve` instead of `node ./build/server/prod.js`
+  (check `cat /proc/1/cmdline` inside the control-plane container)
 
 ## Change discipline
 

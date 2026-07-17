@@ -44,7 +44,7 @@ e2e/                # Playwright specs
 docs/               # Feature-specific runbooks (webhooks, SLO, feature flags, …)
 openspec/changes/   # Tiered design specs and task lists
 scripts/            # Architecture lint guard, dev helpers
-server/start.js     # Production entry — persistent HTTP + tRPC + Socket.IO + workers
+server/prod.ts      # Production entry source — bundled to build/server/prod.js (Socket.IO + workers)
 ```
 
 ## Architecture invariants (do not violate)

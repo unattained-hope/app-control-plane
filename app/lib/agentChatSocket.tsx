@@ -60,7 +60,9 @@ export function AgentChatSocketProvider({
 
     const socket = io(window.location.origin, {
       auth: { agentUserId: userId, agentRole: role },
-      transports: ["websocket"],
+      // Prefer WebSocket; fall back to long-polling when proxies/basic-auth
+      // interrupt the upgrade (same pattern as the merchant SupportChatBubble).
+      transports: ["websocket", "polling"],
     });
     socketRef.current = socket;
 

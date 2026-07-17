@@ -34,7 +34,10 @@ export function ChatWidget({ backendUrl, token }: ChatWidgetProps) {
 
   useEffect(() => {
     // Cross-origin handshake with the host-minted token.
-    const socket = io(backendUrl, { auth: { token }, transports: ["websocket"] });
+    const socket = io(backendUrl, {
+      auth: { token },
+      transports: ["websocket", "polling"],
+    });
     socketRef.current = socket;
 
     socket.on("connect", () => socket.emit("merchant:open"));
