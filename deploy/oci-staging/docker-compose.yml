@@ -1,0 +1,94 @@
+# Apoaap Control Plane staging stack for the shared OCI A1 VM (Arm64).
+#
+# Usage (on the VM, from this directory after cloning the repo):
+#   cp .env.example .env   # fill secrets + domain
+#   bash ./deploy.sh
+#
+# Does NOT publish 80/443 — SaleSwitch's Caddy on the shared VM terminates TLS
+# and reverse-proxies CONTROL_PLANE_DOMAIN → control-plane:3000. Attach this
+# Compose project to SaleSwitch's Docker network via SALESWITCH_DOCKER_NETWORK.
+#
+# Public ports: none required. Postgres and Redis stay on this project's network.
+
+services:
+  control-plane:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      CONTROL_PLANE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      WORKOS_REDIRECT_URI: https://${CONTROL_PLANE_DOMAIN}/auth/callback
+      BADGE_GRAPHIC_STORAGE_DIR: /data/badge-graphics
+      BADGE_GRAPHIC_PUBLIC_BASE_URL: https://${CONTROL_PLANE_DOMAIN}
+      BADGE_GRAPHIC_FALLBACK_DIR: ""
+    volumes:
+      - badge_graphics:/data/badge-graphics
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Persistent entry attaches Socket.IO — never react-router-serve.
+    command: ["node", "./build/server/prod.js"]
+    mem_limit: 1536m
+    cpus: 0.75
+    networks:
+      - default
+      - saleswitch_proxy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    mem_limit: 1024m
+    cpus: 0.35
+
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    mem_limit: 384m
+    cpus: 0.15
+
+volumes:
+  pgdata:
+  redisdata:
+  badge_graphics:
+
+networks:
+  # Join SaleSwitch Compose network so its Caddy can reach control-plane:3000.
+  # Default name matches `docker compose` project "oci-staging" under SaleSwitch.
+  saleswitch_proxy:
+    external: true
+    name: ${SALESWITCH_DOCKER_NETWORK:-oci-staging_default}

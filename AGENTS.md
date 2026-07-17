@@ -75,6 +75,7 @@ These are enforced by lint/tests and are non-negotiable:
 | Seed app registry | `npm run seed` |
 | Dev server | `npm run dev` |
 | Background worker (dev) | `npm run worker` |
+| Staging deploy (VM) | `bash deploy/oci-staging/deploy.sh` |
 | Typecheck | `npm run typecheck` |
 | Unit/integration tests | `npm test` |
 | E2E tests | `npm run test:e2e` |

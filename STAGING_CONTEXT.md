@@ -27,10 +27,10 @@ the integration seam between the two apps.
 - SaleSwitch setup procedure: `badgy/docs/oci-staging-runbook.html` (control plane
   is Phase B after SaleSwitch is live).
 - SaleSwitch infrastructure definition: `badgy/deploy/oci-staging/`.
-- This repo ships a production `Dockerfile` at the root; a committed
-  `deploy/oci-staging/` topology for the control plane is not yet in Git. Live
-  staging may use transitional Compose/Caddy entries on the VM — treat those as
-  local until they are committed here and cross-linked from Badgy.
+- This repo ships a production `Dockerfile` at the root and a committed
+  `deploy/oci-staging/` topology (Compose + `deploy.sh` + Caddy fragment).
+- SaleSwitch still owns public 80/443 via its Caddy; this stack joins
+  SaleSwitch's Docker network so Caddy can reach `control-plane:3000`.
 
 ## Current known environment
 
@@ -46,14 +46,13 @@ Shared with SaleSwitch (see Badgy `STAGING_CONTEXT.md`):
 
 Control-plane specific (record operational identifiers outside Git):
 
-- Control-plane public URL (DNS + Caddy host; must match SaleSwitch
-  `CONTROL_PLANE_URL` when integration is enabled)
-- VM application directory for this checkout (commonly `/opt/app-control-plane`
-  or a sibling under `/opt/` — confirm on the VM)
-- Compose / Caddy fragments used for the control-plane services
+- Control-plane public URL: `https://staging.admin.apoaap.shop` (override via
+  `CONTROL_PLANE_DOMAIN` in `deploy/oci-staging/.env`)
+- VM application directory: `/opt/app-control-plane` (confirm on the VM)
+- Compose directory: `/opt/app-control-plane/deploy/oci-staging`
+- Deploy script: `bash /opt/app-control-plane/deploy/oci-staging/deploy.sh`
 - Control-plane Postgres credentials and database name (separate from SaleSwitch)
-- Redis URL used by the control plane (dedicated instance preferred; do not reuse
-  SaleSwitch Redis without intentional isolation review)
+- Redis URL used by the control plane (dedicated instance in this Compose project)
 - WorkOS organization, client, redirect URI, and cookie password for staging
 - SaleSwitch staging replica DSN (read-only role) when live replica reads are
   enabled; otherwise fixture/stub mode remains in effect
@@ -61,6 +60,8 @@ Control-plane specific (record operational identifiers outside Git):
   (`BADGE_GRAPHIC_READ_TOKEN`, `FEATURE_FLAGS_READ_TOKEN`,
   `SALESWITCH_INTERNAL_API_SECRET` ↔ Badgy `BADGY_INTERNAL_API_SECRET`,
   `SHOPIFY_API_SECRET` for support-chat token verify)
+- Optional `CONTROL_PLANE_BASIC_AUTH=user:pass` for deploy.sh HTTPS checks when
+  Caddy Basic Auth is enabled
 
 ## Relationship to SaleSwitch staging
 
@@ -68,12 +69,14 @@ From Badgy `STAGING_CONTEXT.md`:
 
 - The repository-defined SaleSwitch stack is `caddy`, `app`, `postgres`, and
   `redis` under `/opt/saleswitch/deploy/oci-staging`.
-- The app-control-plane deployment is **not** currently represented in Badgy’s
-  committed `docker-compose.yml` or `Caddyfile` and may run separately on the VM.
-- Routine SaleSwitch deployment does **not** remove orphan containers, so a
-  separately managed control-plane deployment is left untouched.
-- SaleSwitch deploy currently allows transitional local edits to Caddy/Compose via
-  `--allow-local-config` until control-plane topology is committed upstream.
+- Control plane has its own Compose project under
+  `/opt/app-control-plane/deploy/oci-staging` (`control-plane`, `postgres`,
+  `redis`) and joins SaleSwitch’s Docker network for Caddy reachability.
+- Routine SaleSwitch deployment does **not** remove orphan containers and does
+  **not** rebuild the control plane — use `app-control-plane`’s `deploy.sh`.
+- SaleSwitch `--allow-local-config` still covers Caddy host blocks that proxy
+  `CONTROL_PLANE_DOMAIN` → `control-plane:3000` (see
+  `deploy/oci-staging/Caddyfile.fragment`).
 
 When integration is enabled, SaleSwitch staging `.env` uses:
 
@@ -133,14 +136,11 @@ curl -i -u 'USER:PASS' \
 
 ## Configuration and secrets
 
-Create the live environment file on the VM from this repo’s `.env.example`; never
-copy a laptop development `.env`. Required / commonly required values include:
-
-- `CONTROL_PLANE_DATABASE_URL`
-- `SALESWITCH_REPLICA_URL` (staging replica or intentional stub path)
-- `REDIS_URL`
-- `WORKOS_API_KEY`, `WORKOS_CLIENT_ID`, `WORKOS_REDIRECT_URI`,
-  `WORKOS_COOKIE_PASSWORD`
+Create the live environment file on the VM from
+`deploy/oci-staging/.env.example` (not the repo-root `.env.example` alone);
+never copy a laptop development `.env`. Compose injects
+`CONTROL_PLANE_DATABASE_URL` and `REDIS_URL` from the Postgres/Redis services.
+Also set:
 - `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET` (secret must match SaleSwitch staging
   when verifying support-chat tokens)
 - `NODE_ENV=production`
@@ -161,79 +161,87 @@ Shared secrets must match SaleSwitch staging. Coordinate rotation with
 
 ## Normal deployment
 
-Until a committed `deploy/oci-staging/deploy.sh` exists in this repository,
-deploy from the VM checkout using the same discipline as SaleSwitch:
+SaleSwitch must already be up (its Compose network + Caddy own 80/443). Then:
 
-1. Confirm the SaleSwitch stack is healthy (see Badgy verification section).
-2. Ensure the control-plane worktree is on the intended branch and matches its
-   upstream (or follow the transitional local-config policy if Compose/Caddy
-   fragments are still uncommitted).
-3. Build and start the control-plane image from the repo-root `Dockerfile`.
-4. Run `prisma migrate deploy` against the **control-plane** database before or as
-   part of container start (idempotent; never edit an existing migration to repair
-   staging — create a new one).
-5. Seed the App registry if needed (`npm run seed` / equivalent in the image).
-6. Verify HTTPS, `/healthz`, `/readyz`, and WorkOS login.
+```bash
+# One-time: clone / sync this repo to the VM, create env, merge Caddy fragment
+sudo mkdir -p /opt/app-control-plane
+# … git clone or pull into /opt/app-control-plane …
+cd /opt/app-control-plane/deploy/oci-staging
+cp .env.example .env   # fill secrets; never copy a laptop .env
+# Merge Caddyfile.fragment into /opt/saleswitch/deploy/oci-staging/Caddyfile
+# then: cd /opt/saleswitch/deploy/oci-staging && docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 
-Do not run SaleSwitch `deploy.sh` expecting it to rebuild the control plane. Do
-not use `docker compose down --remove-orphans` on the SaleSwitch project if that
-would remove a separately named control-plane stack — prefer project-scoped
-recreates.
+bash /opt/app-control-plane/deploy/oci-staging/deploy.sh
+```
 
-If code is transferred with `rsync` rather than Git, exclude at least `.git`,
-`node_modules`, `build`, `.react-router`, local `.env` files, `data/`, and test
-output.
+With permitted local Compose/fragment edits only:
+
+```bash
+bash /opt/app-control-plane/deploy/oci-staging/deploy.sh --allow-local-config
+```
+
+The script:
+
+1. Fast-forwards the current branch to match its upstream
+2. Starts control-plane Postgres + Redis, dumps a pre-schema backup
+3. Builds the control-plane image (`Dockerfile` → `node ./build/server/prod.js`)
+4. Runs `prisma db push` (no migrations history yet; switch to `migrate deploy` when added)
+5. Starts the stack, asserts PID 1 is `build/server/prod.js`, `/healthz`, and Socket.IO polling
+
+Do **not** run SaleSwitch `deploy.sh` expecting it to rebuild the control plane.
+Do **not** use `docker compose down --remove-orphans` on SaleSwitch if that would
+remove a separately named control-plane stack — prefer project-scoped recreates.
+
+If migrating off the transitional "control-plane service inside SaleSwitch Compose"
+layout: stop/remove that old service first so ports and names do not collide, then
+bring up this project.
 
 ## Verification after deployment
 
 ```bash
-# Paths/names depend on the live Compose project — adjust to the VM layout.
-curl -I https://<CONTROL_PLANE_STAGING_HOST>
-curl -fsS https://<CONTROL_PLANE_STAGING_HOST>/healthz
-curl -fsS https://<CONTROL_PLANE_STAGING_HOST>/readyz
+bash /opt/app-control-plane/deploy/oci-staging/deploy.sh   # already verifies
+# Or manually:
+cd /opt/app-control-plane/deploy/oci-staging
+docker compose ps
+curl -fsS -u "$CONTROL_PLANE_BASIC_AUTH" "https://staging.admin.apoaap.shop/healthz"
+curl -fsS -u "$CONTROL_PLANE_BASIC_AUTH" \
+  "https://staging.admin.apoaap.shop/socket.io/?EIO=4&transport=polling" | head -c 200
 ```
 
 Expected results:
 
-- Public URL presents a valid TLS certificate.
-- `/healthz` returns 200 while the process is up.
-- `/readyz` returns 200 only when control-plane Postgres and Redis are reachable.
-- No Prisma migration or startup errors in app logs.
+- `control-plane`, `postgres`, and `redis` are running; Postgres and Redis are healthy.
+- PID 1 is `node ./build/server/prod.js` (not `react-router-serve`).
+- `/healthz` returns 200 (after Basic Auth if enabled).
+- Socket.IO polling returns a body containing `"sid"`.
 - WorkOS AuthKit sign-in completes for a staging operator and lands in the shell.
-- Dev role paths (ADMIN / SUPPORT / VIEWER) behave per `app/server/rbac.ts`
-  (server enforcement; UI gating is cosmetic only).
-- With SaleSwitch integration enabled: badge-graphic catalog fetch and (if
-  configured) internal usage ingest / feature-flag reads succeed with matching
-  tokens.
-- KPI/ops/growth tiles read rollup snapshots — not live production joins.
-
-Also confirm SaleSwitch still passes its own checks in Badgy `STAGING_CONTEXT.md`
-after any shared Caddy or secret change.
 
 ## Common operations
 
-View logs (adjust service name to the live Compose service):
+View logs:
 
 ```bash
-docker compose logs -f --tail=200 <control-plane-service>
+cd /opt/app-control-plane/deploy/oci-staging
+docker compose logs -f --tail=200 control-plane
 ```
 
 Restart only the application after a safe config change:
 
 ```bash
-docker compose restart <control-plane-service>
+docker compose restart control-plane
 ```
 
 Recreate after changing `.env`:
 
 ```bash
-docker compose up -d --force-recreate <control-plane-service>
+docker compose up -d --force-recreate control-plane
 ```
 
-Rebuild after source or dependency changes:
+Rebuild after source or dependency changes (prefer `deploy.sh`):
 
 ```bash
-docker compose up -d --build <control-plane-service>
+bash /opt/app-control-plane/deploy/oci-staging/deploy.sh
 ```
 
 Inspect resource use on the shared VM:
@@ -308,10 +316,10 @@ Useful symptom mapping:
 
 - Keep this file aligned with Badgy `STAGING_CONTEXT.md` whenever shared VM,
   Caddy, domain, or integration-secret conventions change.
-- When control-plane Compose/Caddy topology is committed under `deploy/`, update
-  this document, `.env.example`, and Badgy’s staging context/runbook together.
+- Treat `deploy/oci-staging/` as the desired staging topology; update Compose,
+  `.env.example`, `Caddyfile.fragment`, and this document together.
 - Test Docker images on `linux/arm64`.
-- Keep stateful services private; expose the app only through Caddy.
+- Keep stateful services private; expose the app only through SaleSwitch Caddy.
 - Use development stores and staging WorkOS tenants only.
 - Record the deployment commit SHA in the operations log or release record after
   each deploy.
