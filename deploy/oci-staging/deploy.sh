@@ -436,28 +436,38 @@ BASIC_AUTH="$(load_env_value CONTROL_PLANE_BASIC_AUTH || true)"
 CURL_AUTH_ARGS=()
 if [[ -n "${BASIC_AUTH}" ]]; then
   CURL_AUTH_ARGS=(-u "${BASIC_AUTH}")
+else
+  echo "Note: CONTROL_PLANE_BASIC_AUTH is unset. If Caddy uses Basic Auth, /healthz checks will get 401."
 fi
 
 printf 'HTTPS healthz: %s ' "${PUBLIC_URL}/healthz"
 https_ready=false
+https_last_code="000"
 for ((attempt = 1; attempt <= HTTPS_ATTEMPTS; attempt += 1)); do
-  if curl --fail --silent \
-    "${CURL_AUTH_ARGS[@]}" \
-    --output /dev/null \
-    --connect-timeout 5 \
-    --max-time 10 \
-    "${PUBLIC_URL}/healthz"; then
+  https_last_code="$(
+    curl --silent --output /dev/null --write-out '%{http_code}' \
+      "${CURL_AUTH_ARGS[@]}" \
+      --connect-timeout 5 \
+      --max-time 10 \
+      "${PUBLIC_URL}/healthz" || true
+  )"
+  if [[ "${https_last_code}" == "200" ]]; then
     https_ready=true
     break
   fi
 
-  printf '.'
+  printf '.%s' "${https_last_code}"
   sleep 5
 done
 echo
-[[ "${https_ready}" == true ]] \
-  || fail "Public HTTPS /healthz verification failed. Confirm SaleSwitch Caddy proxies ${CONTROL_PLANE_DOMAIN} → control-plane:3000 and Basic Auth (if any) is in CONTROL_PLANE_BASIC_AUTH."
-
+if [[ "${https_ready}" != true ]]; then
+  echo "Last HTTP status for /healthz: ${https_last_code}" >&2
+  if [[ "${https_last_code}" == "401" ]]; then
+    fail "Caddy Basic Auth rejected the probe. Set CONTROL_PLANE_BASIC_AUTH=user:pass in ${ENV_FILE} to match Caddy."
+  fi
+  fail "Public HTTPS /healthz verification failed (HTTP ${https_last_code}). Confirm SaleSwitch Caddy proxies ${CONTROL_PLANE_DOMAIN} → control-plane:3000 on network ${SALESWITCH_DOCKER_NETWORK}."
+fi
+echo "HTTPS /healthz: OK"
 printf 'Socket.IO polling: %s ' "${PUBLIC_URL}/socket.io/?EIO=4&transport=polling"
 socket_ready=false
 SOCKET_BODY="$(mktemp)"
