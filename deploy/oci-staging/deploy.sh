@@ -50,9 +50,12 @@ stage() {
 
 is_allowed_local_config() {
   case "$1" in
-    deploy/oci-staging/docker-compose.yml \
+    Dockerfile \
+      | .dockerignore \
+      | deploy/oci-staging/docker-compose.yml \
       | deploy/oci-staging/Caddyfile.fragment \
-      | deploy/oci-staging/.env.example)
+      | deploy/oci-staging/.env.example \
+      | deploy/oci-staging/deploy.sh)
       return 0
       ;;
     *)

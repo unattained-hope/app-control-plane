@@ -1,0 +1,15 @@
+node_modules
+build
+.react-router
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+data
+test-results
+playwright-report
+coverage
+openspec
+*.log
+.DS_Store
