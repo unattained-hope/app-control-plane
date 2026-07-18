@@ -16,14 +16,13 @@ the integration seam between the two apps.
 
 ## Purpose and safety
 
-- Staging is for internal-admin smoke tests, WorkOS SSO validation, connector and
+- Staging is for internal-admin smoke tests, role-login validation, connector and
   rollup checks, migrations, and release validation against the SaleSwitch staging
   stack.
 - It is not production and must not be used for paying-merchant operations or
   production PII workflows beyond what staging data already contains.
 - Never commit VM IPs, SSH private keys, database passwords, Shopify secrets,
-  access tokens, WorkOS secrets, shared HMAC/bearer tokens, or metrics scrape
-  tokens here.
+  access tokens, shared HMAC/bearer tokens, or metrics scrape tokens here.
 - SaleSwitch setup procedure: `badgy/docs/oci-staging-runbook.html` (control plane
   is Phase B after SaleSwitch is live).
 - SaleSwitch infrastructure definition: `badgy/deploy/oci-staging/`.
@@ -53,7 +52,6 @@ Control-plane specific (record operational identifiers outside Git):
 - Deploy script: `bash /opt/app-control-plane/deploy/oci-staging/deploy.sh`
 - Control-plane Postgres credentials and database name (separate from SaleSwitch)
 - Redis URL used by the control plane (dedicated instance in this Compose project)
-- WorkOS organization, client, redirect URI, and cookie password for staging
 - SaleSwitch staging replica DSN (read-only role) when live replica reads are
   enabled; otherwise fixture/stub mode remains in effect
 - Shared integration secrets that must match Badgy staging
@@ -215,7 +213,7 @@ Expected results:
 - PID 1 is `node ./build/server/prod.js` (not `react-router-serve`).
 - `/healthz` returns 200 (after Basic Auth if enabled).
 - Socket.IO polling returns a body containing `"sid"`.
-- WorkOS AuthKit sign-in completes for a staging operator and lands in the shell.
+- Visiting `/dev-login?role=ADMIN&to=/` (after Basic Auth) lands in the shell.
 
 ## Common operations
 
@@ -291,14 +289,13 @@ A1 VM stays acceptable.
    project.
 5. Inspect control-plane app, its Postgres, its Redis, then Caddy logs.
 6. Confirm `.env` contains required values without printing their contents.
-7. Confirm WorkOS redirect URI matches the public HTTPS callback URL.
-8. Confirm shared tokens match SaleSwitch staging `.env`.
-9. Confirm the VM has free disk space and is not under memory pressure.
+7. Confirm shared tokens match SaleSwitch staging `.env`.
+8. Confirm the VM has free disk space and is not under memory pressure.
 
 Useful symptom mapping:
 
 - TLS failure: DNS mismatch, blocked ports 80/443, or Caddy host mismatch
-- WorkOS login failure: client ID/secret mismatch or redirect URI drift
+- Unauthenticated shell: open `/dev-login?role=ADMIN&to=/` (behind Basic Auth)
 - `/readyz` 503: control-plane Postgres or Redis not healthy
 - App restart loop: missing configuration, failed migration, or DB connectivity
 - Empty merchant directory / fixture-looking data: replica URL still on stub, or
@@ -327,6 +324,6 @@ Useful symptom mapping:
   `.env.example`, `Caddyfile.fragment`, and this document together.
 - Test Docker images on `linux/arm64`.
 - Keep stateful services private; expose the app only through SaleSwitch Caddy.
-- Use development stores and staging WorkOS tenants only.
+- Use development stores only; do not point staging at production merchant data.
 - Record the deployment commit SHA in the operations log or release record after
   each deploy.

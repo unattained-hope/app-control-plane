@@ -58,7 +58,7 @@ const DEFAULT_APP_KEY = "saleswitch";
 /** Build the request-scoped tRPC context from an incoming Request. */
 export async function createContext(req: Request): Promise<Context> {
   // Dev cookie session (gated to development) takes precedence so browser tests
-  // can exercise real RBAC; production resolves identity only via WorkOS.
+  // can exercise real RBAC; production uses the same cookie/header session path.
   const identity =
     (await resolveDevIdentity(req.headers)) ?? (await resolveIdentity(req.headers));
   const url = new URL(req.url);

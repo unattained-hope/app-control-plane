@@ -25,12 +25,6 @@ const EnvSchema = z.object({
   // Redis backs BullMQ + the Socket.IO adapter.
   REDIS_URL: z.string().url(),
 
-  // WorkOS AuthKit.
-  WORKOS_API_KEY: z.string().min(1),
-  WORKOS_CLIENT_ID: z.string().min(1),
-  WORKOS_REDIRECT_URI: z.string().url().default("http://localhost:3000/auth/callback"),
-  WORKOS_COOKIE_PASSWORD: z.string().min(32),
-
   // Shopify Admin API (subscription reads).
   SHOPIFY_API_KEY: z.string().min(1),
   SHOPIFY_API_SECRET: z.string().min(1),

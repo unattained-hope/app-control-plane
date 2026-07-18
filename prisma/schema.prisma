@@ -189,7 +189,7 @@ enum PlanChangeStatus {
   FAILED
 }
 
-/// Mirrors WorkOS identity; role lives here.
+/// Admin identity; role lives here (cookie / header provisioning).
 model AdminUser {
   id        String     @id @default(cuid())
   email     String     @unique

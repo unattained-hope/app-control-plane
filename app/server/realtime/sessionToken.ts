@@ -70,7 +70,6 @@ function configuredHostOrigins(): ReadonlySet<string> {
     cfg.SALESWITCH_INTERNAL_API_URL,
     cfg.SALESWITCH_ADMIN_API_URL,
     cfg.BADGE_GRAPHIC_PUBLIC_BASE_URL,
-    cfg.WORKOS_REDIRECT_URI,
     cfg.CHAT_HOST_ORIGINS,
   ];
   for (const raw of candidates) {

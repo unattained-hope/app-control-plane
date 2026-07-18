@@ -6,7 +6,7 @@
 # - Control-plane Compose attached to SALESWITCH_DOCKER_NETWORK with network
 #   alias `cp-web` (see deploy/oci-staging/docker-compose.yml)
 #
-# Replace credentials / drop basic_auth once WorkOS-only access is enough.
+# Optional basic_auth below is the staging gate for this internal admin UI.
 # If you keep basic_auth, exclude /socket.io — the embedded widget cannot send
 # Caddy credentials on the Socket.IO handshake.
 
@@ -18,7 +18,7 @@
 	}
 
 	handle {
-		# Optional staging gate (remove when operators use WorkOS only).
+		# Optional staging gate (enable with a bcrypt hash from `caddy hash-password`).
 		# basic_auth {
 		# 	admin <bcrypt-hash-from: caddy hash-password>
 		# }

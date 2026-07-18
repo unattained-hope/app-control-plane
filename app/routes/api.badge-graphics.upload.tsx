@@ -28,7 +28,7 @@ function mimeFromFilename(name: string): string | null {
 
 /**
  * Multipart upload for badge graphic images (cp-app-settings). ADMIN-only via
- * session cookie (dev or WorkOS). Returns the public asset URL path.
+ * session cookie (role login). Returns the public asset URL path.
  */
 export async function action({ request }: ActionFunctionArgs) {
   const identity =

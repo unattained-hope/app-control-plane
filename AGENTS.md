@@ -15,7 +15,7 @@ OpenSpec change history lives under `openspec/changes/` (tier0–tier3). The ori
 - **Runtime:** Node 20+, React Router 7 (framework mode, persistent Express server)
 - **API:** tRPC v11 (server-side RBAC via CASL)
 - **Data:** Prisma 6 + PostgreSQL (control-plane DB); read-replica access via connectors
-- **Auth:** WorkOS AuthKit SSO (dev stub via header/cookie identity)
+- **Auth:** Cookie role login (`/dev-login`) + optional `x-admin-email` header seam
 - **Realtime:** Socket.IO + Redis adapter
 - **Jobs:** BullMQ + Redis (KPI/ops/growth rollups, webhooks, SLA/compliance sweeps)
 - **UI:** shadcn-style components, Tremor, TanStack Table/Query, Tailwind
@@ -30,7 +30,9 @@ app/
   components/       # Shared UI
   lib/              # Client-safe + shared utilities (config, trpc client, theme, PII helpers)
   server/
-    auth.ts         # WorkOS adapter + dev identity seam
+  server/
+    auth.ts         # AdminIdentity + header identity seam
+    devSession.ts   # Cookie role session (`/dev-login`)
     db.ts           # Prisma client (control-plane DB only)
     rbac.ts         # CASL ability definitions — source of truth for permissions
     trpc/           # Routers + core middleware (authedProcedure, requireAbility)
@@ -93,7 +95,7 @@ npm run seed
 npm run dev                 # http://localhost:3000
 ```
 
-Dev auth uses `app/server/devSession.ts` and `/dev-login` (inert in production). Use the dev role switcher to exercise ADMIN / SUPPORT / VIEWER paths.
+Auth uses `app/server/devSession.ts` and `/dev-login` (role cookie). Use it to exercise ADMIN / SUPPORT / VIEWER paths. Staging sits behind Caddy Basic Auth.
 
 Required services: control-plane Postgres, Redis. SaleSwitch replica is stubbed via `app/server/connectors/fixtureSource.ts` until a real read-replica DSN is provisioned.
 
@@ -133,7 +135,7 @@ External deps are stubbed at injectable seams; swapping stubs is a one-file chan
 
 | Dependency | Seam | MVP stub |
 |------------|------|----------|
-| WorkOS AuthKit | `app/server/auth.ts` | Header/cookie dev identity |
+| Admin identity | `devSession.ts` + `auth.ts` | Cookie role login; header seam for tests |
 | Read replica | `saleswitchConnector.ts` `ReplicaReadSource` | `fixtureSource.ts` |
 | Secrets manager | `app/lib/secrets.ts` | Env-backed |
 | Shopify billing | `billingService.ts` | `StubShopifySubscriptionReader` |

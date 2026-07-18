@@ -96,14 +96,14 @@ The control plane is treated as a **first-class application** (own SLA, auth, au
 | ORM / control-plane DB | **Prisma 6 + PostgreSQL** | Control plane owns its **own** DB |
 | Per-app reads | **Prisma client per app DB → read-replica** | via `@prisma/extension-read-replicas` — **verify Prisma 7 requirement** (see §14) |
 | UI | **shadcn/ui** + Tailwind | + **TanStack Table/Query**, **Tremor** charts |
-| Auth | **WorkOS AuthKit** | Google/Microsoft social login (free under scale) |
+| Auth | **Cookie role login** (`/dev-login`) | Internal admin; staging behind Basic Auth / zero-trust |
 | RBAC | **CASL** + roles table | Owned policy layer |
 | Realtime (chat) | **Socket.IO + Redis adapter** | Self-hosted |
 | Jobs | **BullMQ + Redis** | KPI rollups, webhook ingestion |
 | Inbox base | **Custom, modeled on Chatwoot** | Adopt Chatwoot fully in v1; MVP = minimal custom loop |
 | Observability | **Sentry** | Errors + traces, app + workers |
 | Hosting | **Containers** (Fly.io / Hetzner / ECS) | Co-located near SaleSwitch replica |
-| Access | **Cloudflare Access / Tailscale** | Zero-trust in front of SSO |
+| Access | **Cloudflare Access / Tailscale / Basic Auth** | Zero-trust in front of the admin UI |
 
 > Rationale and alternatives for each are in the research report. This PRD treats them as decided.
 
@@ -157,7 +157,7 @@ The control plane owns its **own Postgres**. Merchant business data is **read li
 ### 7.1 Control-plane tables
 
 ```prisma
-// Mirrors WorkOS identity; role lives here.
+// Admin identity; role lives here (provisioned via role cookie / header seam).
 model AdminUser {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -280,10 +280,10 @@ Each app maps **its own schema** → these common shapes. The core never sees ra
 
 Each epic has user stories and **testable acceptance criteria (AC)**.
 
-### E1 — Authentication, SSO & RBAC
-**Story:** As a team member, I sign in with my company Google/Microsoft account and only see what my role allows.
+### E1 — Authentication & RBAC
+**Story:** As a team member, I sign in via the role login (behind zero-trust / Basic Auth) and only see what my role allows.
 - AC1.1 — Unauthenticated requests are rejected at the zero-trust gateway **and** the app.
-- AC1.2 — Sign-in uses WorkOS AuthKit (Google/Microsoft social login); first login provisions an `AdminUser` (default `VIEWER`).
+- AC1.2 — Sign-in uses cookie role login (`/dev-login`); first login provisions an `AdminUser` for that role.
 - AC1.3 — Role is enforced server-side in **tRPC middleware via CASL** — not just hidden in the UI. A `VIEWER` calling a write procedure gets `FORBIDDEN`.
 - AC1.4 — An `ADMIN` can change another user's role; the change is audited.
 - AC1.5 — Sessions expire; re-auth required after expiry.
@@ -341,7 +341,7 @@ Each epic has user stories and **testable acceptance criteria (AC)**.
 - AC9.1 — App deployed as a **persistent container** co-located near the SaleSwitch replica; **not** serverless.
 - AC9.2 — Fronted by **zero-trust** (Cloudflare Access / Tailscale); not reachable on the open internet.
 - AC9.3 — **Sentry** captures errors + traces for both web requests and BullMQ workers; alerts to Slack.
-- AC9.4 — Secrets (replica creds, WorkOS, Shopify) live in a **secrets manager**, injected at runtime; encryption keys are **never** co-located with the read-only role.
+- AC9.4 — Secrets (replica creds, Shopify) live in a **secrets manager**, injected at runtime; encryption keys are **never** co-located with the read-only role.
 - AC9.5 — CI runs typecheck, unit tests, and the connector smoke/replica tests before deploy.
 
 ---
@@ -350,7 +350,7 @@ Each epic has user stories and **testable acceptance criteria (AC)**.
 
 | Area | Requirement |
 |---|---|
-| **Security** | SSO + server-enforced RBAC; zero-trust network; least-privilege read-only DB role per app; append-only audit; no secret decryption in the admin plane; type-to-confirm + ADMIN-gate on dangerous actions. |
+| **Security** | Cookie/session auth + server-enforced RBAC; zero-trust network; least-privilege read-only DB role per app; append-only audit; no secret decryption in the admin plane; type-to-confirm + ADMIN-gate on dangerous actions. |
 | **Privacy** | Read-only on merchant PII; access logged; honor the data-minimization principle (don't copy app data into the control plane beyond rollups). |
 | **Performance** | Merchant search p95 < 5 s; dashboard from pre-aggregated rows; replica targeting keeps load off app primaries. |
 | **Reliability** | Persistent process; BullMQ retries for rollups/webhooks; graceful degradation if Shopify/replica is slow (cached + "as of"). |
@@ -362,7 +362,7 @@ Each epic has user stories and **testable acceptance criteria (AC)**.
 ## 10. Dependencies & assumptions
 - **D1** — A **read-replica** of the SaleSwitch DB exists (or is provisioned) with a dedicated **read-only role**.
 - **D2** — SaleSwitch exposes (or will expose) **≥1 narrow, authenticated admin API endpoint** for any mutating merchant action (E4.2). Without it, MVP actions are limited to control-plane-owned notes/tags.
-- **D3** — WorkOS account + Google/Microsoft OAuth configured for the company domain.
+- **D3** — Admin UI is fronted by zero-trust / Basic Auth (no public SSO provider required).
 - **D4** — Shopify app credentials/scopes permit reading `activeSubscriptions` for managed shops.
 - **D5** — Decision on **adopt vs. fork Chatwoot** is deferred to v1; MVP builds the minimal custom loop on its data model.
 - **D6** — `@prisma/extension-read-replicas` version compatibility with Prisma 6 confirmed, **or** an upgrade path agreed (see §14).
@@ -373,7 +373,7 @@ Each epic has user stories and **testable acceptance criteria (AC)**.
 
 | # | Milestone | Exit criteria | Indicative |
 |---|---|---|---|
-| **M0** | Foundations | RR7+tRPC+Prisma scaffold; WorkOS auth + CASL RBAC; zero-trust; Sentry; CI/CD; `AuditLog` + `AppConnector` interface committed | ~1–2 wks |
+| **M0** | Foundations | RR7+tRPC+Prisma scaffold; cookie auth + CASL RBAC; zero-trust; Sentry; CI/CD; `AuditLog` + `AppConnector` interface committed | ~1–2 wks |
 | **M1** | Merchant ops | SaleSwitch connector on replica; merchant list + detail; guarded+audited actions; subscription read | ~3–4 wks |
 | **M2** | Support inbox | Embedded widget (CSP-safe); Socket.IO+Redis; persisted conversations; agent inbox | ~3–5 wks |
 | **M3** | Dashboard + hardening | KPI rollup jobs + Tremor dashboard; replica-lag surfacing; security review; **MVP ship** | ~1–2 wks |
@@ -418,7 +418,6 @@ Each epic has user stories and **testable acceptance criteria (AC)**.
 | `CONTROL_PLANE_DATABASE_URL` | Control-plane's own Postgres |
 | `SALESWITCH_REPLICA_URL` | Read-replica DSN (read-only role) — via secrets manager |
 | `REDIS_URL` | BullMQ + Socket.IO adapter |
-| `WORKOS_API_KEY` / `WORKOS_CLIENT_ID` | Auth |
 | `SHOPIFY_*` | Admin API creds/scopes for subscription reads |
 | `SENTRY_DSN` | Observability |
 

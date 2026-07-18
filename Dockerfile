@@ -26,8 +26,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/package.json ./
 COPY --from=build /app/prisma ./prisma
-# Secrets (replica creds, WorkOS, Shopify) are injected at runtime by the secrets
-# manager — NEVER baked into this image (AC9.4).
+# Secrets (replica creds, Shopify, integration tokens) are injected at runtime by
+# the secrets manager — NEVER baked into this image (AC9.4).
 EXPOSE 3000
 # Do NOT use react-router-serve — it never attaches Socket.IO.
 CMD ["node", "./build/server/prod.js"]

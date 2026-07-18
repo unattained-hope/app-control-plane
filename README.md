@@ -10,7 +10,7 @@ tenant (**SaleSwitch**) with a multi-app connector seam so app #2 is a config ch
 ## Stack
 
 React Router 7 (framework mode, **persistent** Node server) · tRPC v11 · Prisma 6 +
-its **own** PostgreSQL · CASL RBAC · WorkOS AuthKit SSO · Socket.IO + Redis · BullMQ ·
+its **own** PostgreSQL · CASL RBAC · cookie role login · Socket.IO + Redis · BullMQ ·
 shadcn-style UI + Tremor + TanStack Table/Query · Sentry · zero-trust front.
 
 ## Architecture invariants (enforced)
@@ -36,7 +36,7 @@ The external dependencies (PRD §10) can't be provisioned from a dev box, so the
 
 | Dependency | Seam | Stub |
 |---|---|---|
-| WorkOS AuthKit (D3) | `app/server/auth.ts` `WorkOsAdapter` | header-based dev identity; provisioning + RBAC are real |
+| Admin identity | `app/server/devSession.ts` + `/dev-login` | Cookie role session (`cp_dev_role`); header seam in `auth.ts` for tests |
 | Read-replica (D1) | `app/server/connectors/saleswitchConnector.ts` `ReplicaReadSource` | `fixtureSource.ts` (`isReplicaOnly: true`) |
 | Secrets manager | `app/lib/secrets.ts` `SecretsManager` | env-backed, resolves the canonical replica ref |
 | Shopify billing (D4) | `app/server/services/billingService.ts` `ShopifySubscriptionReader` | `StubShopifySubscriptionReader` |

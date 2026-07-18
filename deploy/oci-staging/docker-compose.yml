@@ -27,7 +27,6 @@ services:
       PORT: "3000"
       CONTROL_PLANE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@cp-postgres:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://cp-redis:6379
-      WORKOS_REDIRECT_URI: https://${CONTROL_PLANE_DOMAIN}/auth/callback
       BADGE_GRAPHIC_STORAGE_DIR: /data/badge-graphics
       BADGE_GRAPHIC_PUBLIC_BASE_URL: https://${CONTROL_PLANE_DOMAIN}
       BADGE_GRAPHIC_FALLBACK_DIR: ""

@@ -23,7 +23,7 @@ seam it reuses / build-vs-buy**.
 realtime chat, append-only audit viewer, notes/tags, **stubbed** billing, app registry.
 
 **Stack / seams to reuse:** React Router 7 · tRPC v11 · Prisma 6 (own Postgres) · CASL RBAC
-· WorkOS AuthKit SSO · Socket.IO + Redis · BullMQ · Tremor · TanStack Table/Query · Sentry
+· cookie role login · Socket.IO + Redis · BullMQ · Tremor · TanStack Table/Query · Sentry
 · replica-only reads · same-transaction append-only audit log · multi-app connector seam ·
 KpiSnapshot rollups.
 

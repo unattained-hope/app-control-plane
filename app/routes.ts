@@ -25,10 +25,8 @@ export default [
     "routes/api.badge-graphics.assets.$appKey.$filename.tsx",
   ),
   route("api/self-serve-billing", "routes/api.self-serve-billing.tsx"),
-  // Dev-only role switcher (sets the cp_dev_role cookie). Inert in production.
+  // Role cookie login (sets cp_dev_role). Staging sits behind Caddy Basic Auth.
   route("dev-login", "routes/dev-login.tsx"),
-  // WorkOS AuthKit OAuth callback — must match WORKOS_REDIRECT_URI (no shell).
-  route("auth/callback", "routes/auth.callback.tsx"),
   layout("routes/_shell.tsx", [
     index("routes/dashboard.tsx"),
     route("merchants", "routes/merchants.tsx"),
