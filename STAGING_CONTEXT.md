@@ -309,8 +309,15 @@ Useful symptom mapping:
 - SaleSwitch deploy “ate” CP: unlikely if orphans are preserved — check whether a
   compose project name collision or manual `--remove-orphans` was used
 - Agent chat `wss://…/socket.io` refused / RR HTML `No route matches URL "/socket.io"`:
-  container is running `react-router-serve` instead of `node ./build/server/prod.js`
-  (check `cat /proc/1/cmdline` inside the control-plane container)
+  (a) container running `react-router-serve` instead of `node ./build/server/prod.js`
+  (check `cat /proc/1/cmdline` inside the control-plane container), or
+  (b) **two** containers named `control-plane` on SaleSwitch’s Docker network
+  (SaleSwitch Compose must not define its own `control-plane` service — remove
+  orphans with `docker compose rm -sf control-plane` under SaleSwitch staging).
+- Merchant widget `unauthorized` / `origin not allowed`: secrets must match;
+  also set `CHAT_HOST_ORIGINS` or `SALESWITCH_INTERNAL_API_URL` to the SaleSwitch
+  app origin (e.g. `https://staging.saleswitch.apoaap.shop`) — the iframe document
+  origin is the host app, not `admin.shopify.com`.
 
 ## Change discipline
 

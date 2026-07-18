@@ -34,12 +34,33 @@ describe("shop session tokens", () => {
     expect(verifyShopToken("")).toBeNull();
   });
 
-  it("allows only admin.shopify.com and the shop's own origin (non-dev)", () => {
+  it("allows admin.shopify.com, the shop origin, and configured host-app origins", () => {
     const shop = "aurora-threads.myshopify.com";
     expect(isAllowedOrigin("https://admin.shopify.com", shop)).toBe(true);
     expect(isAllowedOrigin(`https://${shop}`, shop)).toBe(true);
     expect(isAllowedOrigin("https://evil.example", shop)).toBe(false);
     // NODE_ENV=test in vitest — localhost dev bypass is off here.
     expect(isAllowedOrigin("http://localhost:5173", shop)).toBe(false);
+  });
+
+  it("allows SaleSwitch host-app Origin from SALESWITCH_INTERNAL_API_URL", async () => {
+    stubValidEnv();
+    process.env.SALESWITCH_INTERNAL_API_URL = "https://staging.saleswitch.apoaap.shop";
+    const { __resetConfigForTests } = await import("~/lib/config.js");
+    __resetConfigForTests();
+    const shop = "aurora-threads.myshopify.com";
+    expect(isAllowedOrigin("https://staging.saleswitch.apoaap.shop", shop)).toBe(true);
+    expect(isAllowedOrigin("https://evil.example", shop)).toBe(false);
+  });
+
+  it("allows explicit CHAT_HOST_ORIGINS entries", async () => {
+    stubValidEnv();
+    process.env.CHAT_HOST_ORIGINS =
+      "https://staging.saleswitch.apoaap.shop,https://saleswitch.apoaap.shop";
+    const { __resetConfigForTests } = await import("~/lib/config.js");
+    __resetConfigForTests();
+    const shop = "aurora-threads.myshopify.com";
+    expect(isAllowedOrigin("https://staging.saleswitch.apoaap.shop", shop)).toBe(true);
+    expect(isAllowedOrigin("https://saleswitch.apoaap.shop", shop)).toBe(true);
   });
 });

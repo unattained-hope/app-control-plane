@@ -3,20 +3,25 @@
 #
 # Prerequisites:
 # - CONTROL_PLANE_DOMAIN DNS → staging VM
-# - Control-plane Compose attached to SALESWITCH_DOCKER_NETWORK so the hostname
-#   `control-plane` resolves from the Caddy container
+# - Control-plane Compose attached to SALESWITCH_DOCKER_NETWORK with network
+#   alias `cp-web` (see deploy/oci-staging/docker-compose.yml)
 #
 # Replace credentials / drop basic_auth once WorkOS-only access is enough.
-# If you keep basic_auth, exclude /socket.io OR accept that browsers must send
-# credentials on the WebSocket upgrade (polling fallback helps).
+# If you keep basic_auth, exclude /socket.io — the embedded widget cannot send
+# Caddy credentials on the Socket.IO handshake.
 
 {$CONTROL_PLANE_DOMAIN:staging.admin.apoaap.shop} {
 	encode gzip zstd
 
-	# Optional staging gate (remove when operators use WorkOS only).
-	# basic_auth {
-	# 	admin <bcrypt-hash-from: caddy hash-password>
-	# }
+	handle /socket.io* {
+		reverse_proxy cp-web:3000
+	}
 
-	reverse_proxy control-plane:3000
+	handle {
+		# Optional staging gate (remove when operators use WorkOS only).
+		# basic_auth {
+		# 	admin <bcrypt-hash-from: caddy hash-password>
+		# }
+		reverse_proxy cp-web:3000
+	}
 }

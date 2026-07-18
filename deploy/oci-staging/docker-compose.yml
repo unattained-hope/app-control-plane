@@ -43,8 +43,13 @@ services:
     mem_limit: 1536m
     cpus: 0.75
     networks:
-      - default
-      - saleswitch_proxy
+      default:
+      # Unique alias so SaleSwitch Caddy never round-robins with an orphan
+      # still registered as hostname `control-plane` on the shared network.
+      saleswitch_proxy:
+        aliases:
+          - cp-web
+          - control-plane
 
   cp-postgres:
     image: postgres:16-alpine

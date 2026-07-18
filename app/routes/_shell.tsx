@@ -5,10 +5,15 @@ import {
   useLoaderData,
   type LoaderFunctionArgs,
 } from "react-router";
+import { authkitLoader } from "@workos-inc/authkit-react-router";
 import type { Role } from "@prisma/client";
 import { trpc } from "~/lib/trpc.js";
 import { getConfig } from "~/lib/config.js";
-import { getWorkOs, resolveIdentity } from "~/server/auth.js";
+import {
+  ensureAuthKitConfigured,
+  getWorkOs,
+  resolveIdentity,
+} from "~/server/auth.js";
 import { resolveDevIdentity } from "~/server/devSession.js";
 import { ThemeToggle } from "~/components/ThemeToggle.js";
 import { useAppContext } from "~/lib/appContext.js";
@@ -28,25 +33,52 @@ export interface ShellOutletContext {
  * fullest-access role for local work), in prod to the WorkOS sign-in URL. The
  * e2e suite always visits `/dev-login` first, so it already carries the cookie
  * and this redirect never fires for it.
+ *
+ * Production uses authkitLoader so expired access tokens are refreshed and the
+ * sealed session cookie is rewritten on the response.
  */
-export async function loader({ request }: LoaderFunctionArgs) {
-  const identity =
-    (await resolveDevIdentity(request.headers)) ??
-    (await resolveIdentity(request.headers));
-  if (identity) {
+export async function loader(args: LoaderFunctionArgs) {
+  const { request } = args;
+
+  const devIdentity = await resolveDevIdentity(request.headers);
+  if (devIdentity) {
+    return {
+      role: devIdentity.role,
+      userId: devIdentity.id,
+      agentName: devIdentity.name ?? devIdentity.email,
+    };
+  }
+
+  if (getConfig().NODE_ENV === "development") {
+    const identity = await resolveIdentity(request.headers);
+    if (identity) {
+      return {
+        role: identity.role,
+        userId: identity.id,
+        agentName: identity.name ?? identity.email,
+      };
+    }
+    const url = new URL(request.url);
+    const dest = encodeURIComponent(url.pathname + url.search);
+    throw redirect(`/dev-login?role=ADMIN&to=${dest}`);
+  }
+
+  ensureAuthKitConfigured();
+  return authkitLoader(args, async ({ request: req, auth }) => {
+    if (!auth.user) {
+      const url = new URL(req.url);
+      throw redirect(await getWorkOs().signInUrl(url.pathname + url.search));
+    }
+    const identity = await resolveIdentity(req.headers);
+    if (!identity) {
+      throw redirect(await getWorkOs().signInUrl());
+    }
     return {
       role: identity.role,
       userId: identity.id,
       agentName: identity.name ?? identity.email,
     };
-  }
-
-  const url = new URL(request.url);
-  const dest = encodeURIComponent(url.pathname + url.search);
-  if (getConfig().NODE_ENV === "development") {
-    throw redirect(`/dev-login?role=ADMIN&to=${dest}`);
-  }
-  throw redirect(getWorkOs().signInUrl());
+  });
 }
 
 /**

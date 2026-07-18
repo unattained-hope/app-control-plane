@@ -59,12 +59,44 @@ export function verifyShopToken(token: string): ShopTokenClaims | null {
 }
 
 /**
- * Explicit CORS allow-list for the cross-origin handshake (AC7.2). Only the shop's
- * domain and admin.shopify.com are allowed frame/handshake origins.
+ * Origins of the host Shopify apps / this control plane, derived from config.
+ * The embedded widget's document origin is the SaleSwitch app URL (not the parent
+ * admin.shopify.com frame), so those hosts must be allow-listed for Socket.IO.
+ */
+function configuredHostOrigins(): ReadonlySet<string> {
+  const cfg = getConfig();
+  const origins = new Set<string>();
+  const candidates = [
+    cfg.SALESWITCH_INTERNAL_API_URL,
+    cfg.SALESWITCH_ADMIN_API_URL,
+    cfg.BADGE_GRAPHIC_PUBLIC_BASE_URL,
+    cfg.WORKOS_REDIRECT_URI,
+    cfg.CHAT_HOST_ORIGINS,
+  ];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    for (const part of raw.split(",")) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      try {
+        origins.add(new URL(trimmed).origin);
+      } catch {
+        /* ignore malformed entries */
+      }
+    }
+  }
+  return origins;
+}
+
+/**
+ * Explicit CORS allow-list for the cross-origin handshake (AC7.2).
+ * Allowed: admin.shopify.com, the shop's own HTTPS origin, configured host-app
+ * origins (SaleSwitch / Badgy admin URLs), and this control plane's public origin.
  */
 export function isAllowedOrigin(origin: string, shop: string): boolean {
   if (origin === "https://admin.shopify.com") return true;
   if (origin === `https://${shop}`) return true;
+  if (configuredHostOrigins().has(origin)) return true;
   // Local dev: same-origin widget on the CP dev server, Badgy on localhost, or a
   // Shopify CLI tunnel origin during embedded-app testing.
   if (getConfig().NODE_ENV === "development") {

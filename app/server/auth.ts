@@ -1,4 +1,11 @@
 import type { Role } from "@prisma/client";
+import type { LoaderFunctionArgs } from "react-router";
+import {
+  configure,
+  getConfig as getAuthKitConfig,
+  getSignInUrl,
+  withAuth,
+} from "@workos-inc/authkit-react-router";
 import { getDb } from "./db.js";
 import { getConfig } from "~/lib/config.js";
 
@@ -14,10 +21,9 @@ export interface AdminIdentity {
  * WorkOS AuthKit adapter (cp-auth-rbac AC1.2). Verifies the request session and
  * returns the WorkOS profile, or null if unauthenticated.
  *
- * MVP stub: in a real deploy this calls `authkit-react-router`'s `authLoader` /
- * `getSignInUrl` and verifies the sealed session cookie. Here we expose the seam
- * and a test-injectable resolver so the rest of the stack (provisioning, RBAC) is
- * fully implemented and testable without a live WorkOS tenant.
+ * Production reads the sealed AuthKit session cookie (`wos-session`). Dev/test
+ * may also inject identity via `x-workos-email` / `x-workos-name` headers so
+ * provisioning + RBAC stay testable without a live WorkOS tenant.
  */
 export interface WorkOsProfile {
   readonly email: string;
@@ -30,28 +36,68 @@ export interface WorkOsAdapter {
   /** Resolve the profile from request headers, or null if no/invalid session. */
   resolveProfile(headers: Headers): Promise<WorkOsProfile | null>;
   /** URL to redirect to for sign-in (Google/Microsoft social login). */
-  signInUrl(): string;
+  signInUrl(returnPathname?: string): Promise<string>;
 }
 
-class StubWorkOsAdapter implements WorkOsAdapter {
+let authKitReady = false;
+
+/** Point AuthKit at our validated config (single source: app/lib/config). */
+export function ensureAuthKitConfigured(): void {
+  if (authKitReady) return;
+  const cfg = getConfig();
+  configure({
+    clientId: cfg.WORKOS_CLIENT_ID,
+    apiKey: cfg.WORKOS_API_KEY,
+    redirectUri: cfg.WORKOS_REDIRECT_URI,
+    cookiePassword: cfg.WORKOS_COOKIE_PASSWORD,
+    cookieMaxAge: cfg.SESSION_TTL_SECONDS,
+  });
+  authKitReady = true;
+}
+
+class AuthKitWorkOsAdapter implements WorkOsAdapter {
   async resolveProfile(headers: Headers): Promise<WorkOsProfile | null> {
-    // Dev/test seam: a signed header stands in for the sealed WorkOS cookie.
-    // Production swaps this for real AuthKit session verification.
-    const email = headers.get("x-workos-email");
-    if (!email) return null;
+    ensureAuthKitConfigured();
     const ttl = getConfig().SESSION_TTL_SECONDS;
+
+    // Dev/test seam: a signed header stands in for the sealed WorkOS cookie.
+    const emailHeader = headers.get("x-workos-email");
+    if (emailHeader) {
+      return {
+        email: emailHeader,
+        name: headers.get("x-workos-name"),
+        expiresAt: Math.floor(Date.now() / 1000) + ttl,
+      };
+    }
+
+    const cookieName = getAuthKitConfig("cookieName");
+    const cookieHeader = headers.get("cookie") ?? "";
+    if (!cookieHeader.includes(cookieName)) return null;
+
+    const auth = await withAuth({
+      request: new Request("http://localhost", { headers }),
+      params: {},
+      context: {},
+    } as LoaderFunctionArgs);
+    if (!auth.user?.email) return null;
+
+    const nameParts = [auth.user.firstName, auth.user.lastName].filter(Boolean);
     return {
-      email,
-      name: headers.get("x-workos-name"),
+      email: auth.user.email,
+      name: nameParts.length > 0 ? nameParts.join(" ") : null,
+      // Access tokens are short-lived; AuthKit refresh (authkitLoader) renews them.
+      // Treat the sealed session as valid for our app TTL window.
       expiresAt: Math.floor(Date.now() / 1000) + ttl,
     };
   }
-  signInUrl(): string {
-    return getConfig().WORKOS_REDIRECT_URI;
+
+  async signInUrl(returnPathname?: string): Promise<string> {
+    ensureAuthKitConfigured();
+    return getSignInUrl(returnPathname);
   }
 }
 
-let workos: WorkOsAdapter = new StubWorkOsAdapter();
+let workos: WorkOsAdapter = new AuthKitWorkOsAdapter();
 export function getWorkOs(): WorkOsAdapter {
   return workos;
 }

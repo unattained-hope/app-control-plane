@@ -35,6 +35,14 @@ const EnvSchema = z.object({
   SHOPIFY_API_KEY: z.string().min(1),
   SHOPIFY_API_SECRET: z.string().min(1),
 
+  /**
+   * Extra Socket.IO / shop-token CORS origins (comma-separated absolute URLs).
+   * Use when the host app origin is not already implied by
+   * SALESWITCH_INTERNAL_API_URL / SALESWITCH_ADMIN_API_URL.
+   * Example: https://staging.saleswitch.apoaap.shop,https://saleswitch.apoaap.shop
+   */
+  CHAT_HOST_ORIGINS: z.string().default(""),
+
   // Observability.
   SENTRY_DSN: z.string().default(""),
 
