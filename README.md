@@ -63,6 +63,34 @@ npm run dev
 - `npm test` — vitest invariant suite (RBAC matrix, replica-only, search, token,
   cache, KPIs, stub-connector onboarding)
 
+## OCI production deployment
+
+The production admin app runs on the OCI VM, not on the SaleSwitch GCP VM. The
+current run-book installation uses this layout:
+
+```text
+/opt/app-control-plane/
+├── .env                 # production secrets; mode 600
+├── compose.yaml         # live app-control-plane Compose project
+└── repo/                # this Git checkout
+```
+
+The versioned deployer detects that layout and updates it in place, preserving
+the existing PostgreSQL, Redis, Caddy, and badge-graphics volumes:
+
+```bash
+cd /opt/app-control-plane/repo
+git pull --ff-only
+bash deploy/oci-production/deploy.sh
+```
+
+It pulls the configured upstream, validates the environment, starts dependencies,
+creates and verifies a pre-schema database backup, builds the checked-out commit,
+synchronizes and seeds the schema, recreates the app, and verifies readiness,
+authenticated SSR, Socket.IO, and public HTTPS. See
+[`deploy/oci-production/README.md`](deploy/oci-production/README.md) for first-time
+setup, the alternative fresh-install layout, Caddy routing, and safety details.
+
 ## Open questions carried from design.md
 
 1. `@prisma/extension-read-replicas` ↔ Prisma 6 vs 7 — verify in M0.

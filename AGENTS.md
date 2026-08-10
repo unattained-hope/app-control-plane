@@ -78,6 +78,7 @@ These are enforced by lint/tests and are non-negotiable:
 | Dev server | `npm run dev` |
 | Background worker (dev) | `npm run worker` |
 | Staging deploy (VM) | `bash deploy/oci-staging/deploy.sh` |
+| Production deploy (OCI VM) | `bash deploy/oci-production/deploy.sh` |
 | Typecheck | `npm run typecheck` |
 | Unit/integration tests | `npm test` |
 | E2E tests | `npm run test:e2e` |
@@ -96,6 +97,12 @@ npm run dev                 # http://localhost:3000
 ```
 
 Auth uses `app/server/devSession.ts` and `/dev-login` (role cookie). Use it to exercise ADMIN / SUPPORT / VIEWER paths. Staging sits behind Caddy Basic Auth.
+
+Production deployment is versioned under `deploy/oci-production/`. On the existing
+OCI run-book installation, the Git checkout is `/opt/app-control-plane/repo` while
+`.env` and `compose.yaml` remain in `/opt/app-control-plane`; the deployer detects
+and updates that stack in place. Never initialise a second Git repository or move
+the operational files into the checkout.
 
 Required services: control-plane Postgres, Redis. SaleSwitch replica is stubbed via `app/server/connectors/fixtureSource.ts` until a real read-replica DSN is provisioned.
 

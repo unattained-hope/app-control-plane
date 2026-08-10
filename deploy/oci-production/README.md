@@ -22,6 +22,17 @@ No files should be moved. Keep `/opt/app-control-plane/.env`, `compose.yaml`, an
 the existing volumes where they are. The deployer adds only the operations-only
 `compose.legacy-overlay.yaml` so schema sync and seed use the checked-out code.
 
+Required legacy `.env` inputs include:
+
+- `CONTROL_PLANE_DOMAIN`
+- `CP_POSTGRES_USER`, `CP_POSTGRES_PASSWORD`, `CP_POSTGRES_DB`
+- `SALESWITCH_GCP_TAILSCALE_IP`
+- `SALESWITCH_CP_DB_USER`, `SALESWITCH_CP_DB_PASSWORD`
+- `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`
+
+The replica DSN is derived from those SaleSwitch connection components; do not
+duplicate it as a manually assembled `SALESWITCH_REPLICA_URL`.
+
 ### Fresh installation
 
 ```bash
@@ -38,6 +49,16 @@ not route `admin.saleswitch.cc` to both `cp-web` (staging) and `cp-prod-web`
 (production), or requests may reach the wrong database-backed application.
 
 ## Every deployment
+
+Existing run-book installation:
+
+```bash
+cd /opt/app-control-plane/repo
+git pull --ff-only
+bash deploy/oci-production/deploy.sh
+```
+
+Fresh repo-managed installation:
 
 ```bash
 bash /opt/app-control-plane/deploy/oci-production/deploy.sh
