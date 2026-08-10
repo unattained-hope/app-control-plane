@@ -76,15 +76,6 @@ async function main(): Promise<void> {
       graphicType: "TRUST",
       sortOrder: 4,
     },
-    {
-      slug: "minimal-blank-circle",
-      label: "Blank Circle",
-      imagePath: "/api/badge-graphics/assets/saleswitch/minimal-blank-circle.avif",
-      textBaked: false,
-      theme: "MINIMAL",
-      graphicType: "BLANK",
-      sortOrder: 5,
-    },
   ] as const;
 
   for (const row of fixtures) {

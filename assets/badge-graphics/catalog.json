@@ -1,0 +1,1941 @@
+[
+  {
+    "id": "minimal-sale",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-new",
+    "label": "New",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-50-off",
+    "label": "50% Off",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-best-seller",
+    "label": "Best Seller",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-free-shipping",
+    "label": "Free Shipping",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-limited",
+    "label": "Limited",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "minimal-trending",
+    "label": "Trending",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-bogo",
+    "label": "Buy 1 Get 1",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-20-off",
+    "label": "20% Off",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-hot-deal",
+    "label": "Hot Deal",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-new-arrival",
+    "label": "New Arrival",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-clearance",
+    "label": "Clearance",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-top-rated",
+    "label": "Top Rated",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-eco-friendly",
+    "label": "Eco Friendly",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "minimal-pre-order",
+    "label": "Pre Order",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "minimal-low-stock",
+    "label": "Low Stock",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "minimal-exclusive",
+    "label": "Exclusive",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-save-10",
+    "label": "Save $10",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-flash-sale",
+    "label": "Flash Sale",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-premium",
+    "label": "Premium",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "retro-sale",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-50-off",
+    "label": "50% Off",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-mega-sale",
+    "label": "Mega Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-flash-sale",
+    "label": "Flash Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-bogo",
+    "label": "Buy 1 Get 1",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-up-to-70-off",
+    "label": "Up to 70% Off",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-final-sale",
+    "label": "Final Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-limited-time",
+    "label": "Limited Time",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-clearance",
+    "label": "Clearance",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-weekend-sale",
+    "label": "Weekend Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-deal-of-the-day",
+    "label": "Deal of the Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-price-drop",
+    "label": "Price Drop",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-black-friday-burst",
+    "label": "Black Friday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-black-friday-banner",
+    "label": "Black Friday Banner",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-save-big",
+    "label": "Save Big",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-last-chance",
+    "label": "Last Chance",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-ends-tonight",
+    "label": "Ends Tonight",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-doorbuster",
+    "label": "Doorbuster",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-black-friday",
+    "label": "Black Friday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-cyber-monday",
+    "label": "Cyber Monday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-pre-black-friday",
+    "label": "Pre-Black Friday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-early-access",
+    "label": "Early Access",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-singles-day",
+    "label": "Singles' Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-12-12-sale",
+    "label": "12.12 Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-big-deal-days",
+    "label": "Big Deal Days",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-flash-sale-bolt",
+    "label": "Flash Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-boxing-day",
+    "label": "Boxing Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-weekend-sale-banner",
+    "label": "Weekend Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-doorbuster-burst",
+    "label": "Doorbuster",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-mega-sale-scallop",
+    "label": "Mega Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-labor-day",
+    "label": "Labor Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-memorial-day",
+    "label": "Memorial Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-july-4th",
+    "label": "July 4th",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-end-of-season",
+    "label": "End of Season",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-black-friday-comic",
+    "label": "Black Friday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-cyber-monday-comic",
+    "label": "Cyber Monday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-pre-black-friday-comic",
+    "label": "Pre-Black Friday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-early-access-comic",
+    "label": "Early Access",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-singles-day-comic",
+    "label": "Singles' Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-12-12-sale-comic",
+    "label": "12.12 Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-big-deal-days-comic",
+    "label": "Big Deal Days",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-flash-sale-comic",
+    "label": "Flash Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-boxing-day-comic",
+    "label": "Boxing Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-weekend-sale-comic",
+    "label": "Weekend Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-doorbuster-comic",
+    "label": "Doorbuster",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-mega-sale-comic",
+    "label": "Mega Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-labor-day-comic",
+    "label": "Labor Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-memorial-day-comic",
+    "label": "Memorial Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-july-4th-comic",
+    "label": "July 4th",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-end-of-season-comic",
+    "label": "End of Season",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-sale-starburst",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-50-off-seal",
+    "label": "50% Off",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-mega-sale-ribbon",
+    "label": "Mega Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-hot-deal",
+    "label": "Hot Deal",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-flash-sale-burst",
+    "label": "Flash Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-bogo-sticker",
+    "label": "Buy 1 Get 1",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-limited-time-seal",
+    "label": "Limited Time",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-clearance-seal",
+    "label": "Clearance",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-final-sale-tag",
+    "label": "Final Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-last-chance-pennant",
+    "label": "Last Chance",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-cyber-monday-pennant",
+    "label": "Cyber Monday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-doorbuster-ribbon",
+    "label": "Doorbuster",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-deal-of-the-day-fold",
+    "label": "Deal of the Day",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-price-drop-burst",
+    "label": "Price Drop",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-weekend-sale-seal",
+    "label": "Weekend Sale",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-black-friday-seal",
+    "label": "Black Friday",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "retro-ends-tonight-ticket",
+    "label": "Ends Tonight",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "retro-20-off-burst",
+    "label": "20% Off",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "retro-save-big-burst",
+    "label": "Save Big",
+    "textBaked": true,
+    "theme": "RETRO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-premium",
+    "label": "Premium",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-exclusive",
+    "label": "Exclusive",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-limited-edition",
+    "label": "Limited Edition",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-best-seller",
+    "label": "Best Seller",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-award-winner",
+    "label": "Award Winner",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-handcrafted",
+    "label": "Handcrafted",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "elegant-authentic",
+    "label": "Authentic",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-since-1990",
+    "label": "Since 1990",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-top-rated",
+    "label": "Top Rated",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-new-collection",
+    "label": "New Collection",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-editors-choice",
+    "label": "Editor's Choice",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-luxury",
+    "label": "Luxury",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-verified",
+    "label": "Verified",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-5-star",
+    "label": "5 Star",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-signature",
+    "label": "Signature",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-members-only",
+    "label": "Members Only",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-gift-set",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-sale-shield",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-save-20",
+    "label": "Save 20%",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-vip",
+    "label": "VIP",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-sale-oval",
+    "label": "Sale Oval",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-vip-shield",
+    "label": "VIP Shield",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-premium-wreath",
+    "label": "Premium",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-exclusive-scallop",
+    "label": "Exclusive",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-limited-edition-banner",
+    "label": "Limited Edition",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-best-seller-wax",
+    "label": "Best Seller",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-award-winner-shield",
+    "label": "Award Winner",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-handcrafted-hex",
+    "label": "Handcrafted",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "elegant-authentic-oval",
+    "label": "Authentic",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-since-1990-seal",
+    "label": "Since 1990",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-top-rated-stars",
+    "label": "Top Rated",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-new-collection-frame",
+    "label": "New Collection",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-editors-choice-shield",
+    "label": "Editor's Choice",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-luxury-banner",
+    "label": "Luxury",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-verified-hex",
+    "label": "Verified",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-5-star-scallop",
+    "label": "5 Star",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-signature-wax",
+    "label": "Signature",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-members-only-crown",
+    "label": "Members Only",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-gift-set-tab",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-sale-oval-gold",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-save-20-scallop",
+    "label": "Save 20%",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-vip-shield-gold",
+    "label": "VIP",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-christmas",
+    "label": "Christmas",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-new-year",
+    "label": "New Year",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-valentines-day",
+    "label": "Valentine's Day",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-anniversary",
+    "label": "Anniversary",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-mothers-day",
+    "label": "Mother's Day",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-fathers-day",
+    "label": "Father's Day",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-lunar-new-year",
+    "label": "Lunar New Year",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-diwali",
+    "label": "Diwali",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-eid-sale",
+    "label": "Eid Sale",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-birthday",
+    "label": "Birthday",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-holiday-gift",
+    "label": "Holiday Gift",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-gift-set-gold",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-seasons-greetings",
+    "label": "Season's Greetings",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-limited-edition-gold",
+    "label": "Limited Edition",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-exclusive-gold",
+    "label": "Exclusive",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-new-year-sale",
+    "label": "New Year Sale",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-christmas-gold",
+    "label": "Christmas",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-new-year-gold",
+    "label": "New Year",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-valentines-gold",
+    "label": "Valentine's Day",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-anniversary-gold",
+    "label": "Anniversary",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-mothers-day-gold",
+    "label": "Mother's Day",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-fathers-day-gold",
+    "label": "Father's Day",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-lunar-new-year-gold",
+    "label": "Lunar New Year",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-diwali-gold",
+    "label": "Diwali",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-eid-sale-gold",
+    "label": "Eid Sale",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-birthday-gold",
+    "label": "Birthday",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-holiday-gift-gold",
+    "label": "Holiday Gift",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-gift-set-ribbon",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-seasons-greetings-gold",
+    "label": "Season's Greetings",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "elegant-limited-edition-bar",
+    "label": "Limited Edition",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "elegant-exclusive-oval",
+    "label": "Exclusive",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "elegant-new-arrival-ribbon",
+    "label": "New Arrival",
+    "textBaked": true,
+    "theme": "ELEGANT",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-organic",
+    "label": "Organic",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-handmade",
+    "label": "Handmade",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-100-natural",
+    "label": "100% Natural",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-friendly-ribbon",
+    "label": "Eco Friendly",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-vegan-leaf",
+    "label": "Vegan",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-cruelty-free",
+    "label": "Cruelty Free",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-small-batch",
+    "label": "Small Batch",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-farm-fresh",
+    "label": "Farm Fresh",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-non-gmo",
+    "label": "Non-GMO",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-locally-made",
+    "label": "Locally Made",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-best-seller",
+    "label": "Best Seller",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-new-tag",
+    "label": "New",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-gluten-free",
+    "label": "Gluten Free",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-sustainable",
+    "label": "Sustainable",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-premium",
+    "label": "Premium",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-sale-banner",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-gift-set",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-limited-batch",
+    "label": "Limited Batch",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-certified",
+    "label": "Certified",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-since-1998",
+    "label": "Since 1998",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-organic-rope",
+    "label": "Organic",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-handmade-seal",
+    "label": "Handmade",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-100-natural-wheat",
+    "label": "100% Natural",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-friendly-mountain",
+    "label": "Eco Friendly",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-vegan-wreath",
+    "label": "Vegan",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-vegan-dark",
+    "label": "Vegan Dark",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-cruelty-free-wreath",
+    "label": "Cruelty Free",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-small-batch-wreath",
+    "label": "Small Batch",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-farm-fresh-oval",
+    "label": "Farm Fresh",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-non-gmo-banner",
+    "label": "Non-GMO",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-non-gmo-green",
+    "label": "Non-GMO Green",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-locally-made-hex",
+    "label": "Locally Made",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-best-seller-circle",
+    "label": "Best Seller",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-new-circle",
+    "label": "New",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-gluten-free-rope",
+    "label": "Gluten Free",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-sustainable-blob",
+    "label": "Sustainable",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-sustainable-ribbon",
+    "label": "Sustainable Ribbon",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "eco-premium-hex",
+    "label": "Premium",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-sale-circle",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-gift-set-ribbon",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-limited-batch-tag",
+    "label": "Limited Batch",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-limited-batch-circle",
+    "label": "Limited Batch Circle",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "eco-certified-hex",
+    "label": "Certified",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "eco-since-1998-tag",
+    "label": "Since 1998",
+    "textBaked": true,
+    "theme": "ECO",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-sale-circle",
+    "label": "Sale",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-new-square",
+    "label": "New",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-50-off-blue",
+    "label": "50% Off",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-best-seller-hex",
+    "label": "Best Seller",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-free-shipping-circle",
+    "label": "Free Shipping",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-limited-circle",
+    "label": "Limited",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "minimal-limited-ribbon",
+    "label": "Limited Ribbon",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "minimal-trending-capsule",
+    "label": "Trending",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-bogo-ribbon",
+    "label": "Buy 1 Get 1",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-20-off-circle",
+    "label": "20% Off",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-hot-deal-blue",
+    "label": "Hot Deal Blue",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-hot-deal-red",
+    "label": "Hot Deal Red",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-new-arrival-circle",
+    "label": "New Arrival",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-clearance-capsule",
+    "label": "Clearance",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-top-rated-hex",
+    "label": "Top Rated",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-eco-friendly-hex",
+    "label": "Eco Friendly",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "minimal-pre-order-hex",
+    "label": "Pre-Order",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "URGENCY"
+  },
+  {
+    "id": "minimal-eco-friendly-pink",
+    "label": "Eco Friendly Pink",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "VALUES"
+  },
+  {
+    "id": "minimal-exclusive-ribbon",
+    "label": "Exclusive",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "minimal-save-10-burst",
+    "label": "Save $10",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-flash-sale-burst",
+    "label": "Flash Sale",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "minimal-premium-sparkle",
+    "label": "Premium",
+    "textBaked": true,
+    "theme": "MINIMAL",
+    "graphicType": "TRUST"
+  },
+  {
+    "id": "rustic-easter",
+    "label": "Easter",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-thanksgiving",
+    "label": "Thanksgiving",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-spring-sale",
+    "label": "Spring Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-autumn-sale",
+    "label": "Autumn Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-harvest-sale",
+    "label": "Harvest Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-summer-sale",
+    "label": "Summer Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-winter-sale",
+    "label": "Winter Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-earth-day",
+    "label": "Earth Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-back-to-school",
+    "label": "Back to School",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-mothers-day",
+    "label": "Mother's Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-fathers-day",
+    "label": "Father's Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-new-season",
+    "label": "New Season",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-seasonal-picks",
+    "label": "Seasonal Picks",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-gift-set",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-limited-batch",
+    "label": "Limited Batch",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-holiday-sale",
+    "label": "Holiday Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-easter-sketch",
+    "label": "Easter",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-thanksgiving-sketch",
+    "label": "Thanksgiving",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-spring-sale-sketch",
+    "label": "Spring Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-autumn-sale-sketch",
+    "label": "Autumn Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-harvest-sale-sketch",
+    "label": "Harvest Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-summer-sale-sketch",
+    "label": "Summer Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-winter-sale-sketch",
+    "label": "Winter Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-earth-day-sketch",
+    "label": "Earth Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-back-to-school-sketch",
+    "label": "Back to School",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-mothers-day-sketch",
+    "label": "Mother's Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-fathers-day-sketch",
+    "label": "Father's Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-new-season-sketch",
+    "label": "New Season",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-seasonal-picks-sketch",
+    "label": "Seasonal Picks",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-gift-set-sketch",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-limited-batch-sketch",
+    "label": "Limited Batch",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-holiday-sale-sketch",
+    "label": "Holiday Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-easter-organic",
+    "label": "Easter",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-thanksgiving-organic",
+    "label": "Thanksgiving",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-spring-sale-organic",
+    "label": "Spring Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-autumn-sale-organic",
+    "label": "Autumn Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-harvest-sale-organic",
+    "label": "Harvest Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-summer-sale-organic",
+    "label": "Summer Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-winter-sale-organic",
+    "label": "Winter Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-earth-day-organic",
+    "label": "Earth Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-back-to-school-organic",
+    "label": "Back to School",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-mothers-day-organic",
+    "label": "Mother's Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-fathers-day-organic",
+    "label": "Father's Day",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-new-season-organic",
+    "label": "New Season",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OCCASION"
+  },
+  {
+    "id": "rustic-seasonal-picks-organic",
+    "label": "Seasonal Picks",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-gift-set-organic",
+    "label": "Gift Set",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-limited-batch-organic",
+    "label": "Limited Batch",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  },
+  {
+    "id": "rustic-holiday-sale-organic",
+    "label": "Holiday Sale",
+    "textBaked": true,
+    "theme": "RUSTIC",
+    "graphicType": "OFFER"
+  }
+]

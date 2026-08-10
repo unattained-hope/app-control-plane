@@ -25,7 +25,7 @@ RUN npx prisma generate && npm run build
 # so schema sync + the idempotent TypeScript seed run with the exact code being
 # deployed, without npx downloading tools at runtime.
 FROM build AS schema
-CMD ["sh", "-c", "npx prisma db push --skip-generate && npm run seed"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate && npm run seed && npm run import:badgy-badges"]
 
 FROM build AS prod-deps
 RUN npm prune --omit=dev

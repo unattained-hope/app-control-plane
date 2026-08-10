@@ -67,6 +67,9 @@ services:
       - .env
     environment:
       <<: *control-plane-environment
+      BADGE_GRAPHIC_STORAGE_DIR: /data/badge-graphics
+    volumes:
+      - badge_graphics:/data/badge-graphics
     depends_on:
       cp-postgres:
         condition: service_healthy

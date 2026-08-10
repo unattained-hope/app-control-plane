@@ -20,6 +20,9 @@ services:
       CONTROL_PLANE_DATABASE_URL: postgresql://${CP_POSTGRES_USER}:${CP_POSTGRES_PASSWORD}@cp-postgres:5432/${CP_POSTGRES_DB}?schema=public
       SALESWITCH_REPLICA_URL: postgresql://${SALESWITCH_CP_DB_USER}:${SALESWITCH_CP_DB_PASSWORD}@${SALESWITCH_GCP_TAILSCALE_IP}:5433/saleswitch?schema=public&connection_limit=3
       REDIS_URL: redis://cp-redis:6379
+      BADGE_GRAPHIC_STORAGE_DIR: /data/badge-graphics
+    volumes:
+      - badge_graphics:/data/badge-graphics
     depends_on:
       cp-postgres:
         condition: service_healthy

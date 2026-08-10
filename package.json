@@ -23,6 +23,7 @@
     "db:push": "prisma db push",
     "seed": "tsx prisma/seed.ts",
     "import:badgy-badges": "node scripts/import-badgy-badge-catalog.mjs",
+    "vendor:badgy-badges": "node scripts/vendor-badgy-badge-catalog.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
