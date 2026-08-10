@@ -1,0 +1,24 @@
+# Operations-only overlay for the run-book layout:
+#   /opt/app-control-plane/compose.yaml
+#   /opt/app-control-plane/.env
+#   /opt/app-control-plane/repo/   (this Git checkout)
+#
+# Compose resolves relative paths from the first/base Compose file, so ./repo is
+# the existing checkout used by the live control-plane service.
+services:
+  control-plane-schema:
+    build:
+      context: ./repo
+      dockerfile: Dockerfile
+      target: schema
+    profiles:
+      - operations
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      CONTROL_PLANE_DATABASE_URL: postgresql://${CP_POSTGRES_USER}:${CP_POSTGRES_PASSWORD}@cp-postgres:5432/${CP_POSTGRES_DB}?schema=public
+      REDIS_URL: redis://cp-redis:6379
+    depends_on:
+      cp-postgres:
+        condition: service_healthy

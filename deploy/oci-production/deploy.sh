@@ -13,8 +13,23 @@ umask 077
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
-ENV_FILE="${SCRIPT_DIR}/.env"
-COMPOSE_FILE="${SCRIPT_DIR}/compose.yaml"
+RUNBOOK_DEPLOY_ROOT="${CONTROL_PLANE_DEPLOY_ROOT:-/opt/app-control-plane}"
+LEGACY_OVERLAY="${SCRIPT_DIR}/compose.legacy-overlay.yaml"
+LEGACY_LAYOUT=false
+if [[ "${REPO_ROOT}" == "${RUNBOOK_DEPLOY_ROOT}/repo" \
+  && -f "${RUNBOOK_DEPLOY_ROOT}/compose.yaml" ]]; then
+  # Existing run-book production layout. Updating it in place preserves the
+  # app-control-plane project name and all existing named volumes.
+  LEGACY_LAYOUT=true
+  ENV_FILE="${RUNBOOK_DEPLOY_ROOT}/.env"
+  COMPOSE_FILE="${RUNBOOK_DEPLOY_ROOT}/compose.yaml"
+  COMPOSE_FILES=(--file "${COMPOSE_FILE}" --file "${LEGACY_OVERLAY}")
+else
+  # Fresh repo-managed production layout.
+  ENV_FILE="${SCRIPT_DIR}/.env"
+  COMPOSE_FILE="${SCRIPT_DIR}/compose.yaml"
+  COMPOSE_FILES=(--file "${COMPOSE_FILE}")
+fi
 BACKUP_DIR="${BACKUP_DIR:-/opt/control-plane-backups}"
 WAIT_ATTEMPTS=30
 EDGE_ATTEMPTS=12
@@ -38,7 +53,7 @@ docker() {
 }
 
 compose() {
-  docker compose --env-file "${ENV_FILE}" --file "${COMPOSE_FILE}" "$@"
+  docker compose --env-file "${ENV_FILE}" "${COMPOSE_FILES[@]}" "$@"
 }
 
 env_value() {
@@ -109,21 +124,31 @@ docker info >/dev/null 2>&1 \
   || fail "${ENV_FILE} must have mode 600."
 
 DOMAIN="$(env_value CONTROL_PLANE_DOMAIN)"
-EDGE_NETWORK="$(env_value EDGE_DOCKER_NETWORK)"
-POSTGRES_USER="$(env_value POSTGRES_USER)"
-POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)"
-POSTGRES_DB="$(env_value POSTGRES_DB)"
 SALESWITCH_REPLICA_URL="$(env_value SALESWITCH_REPLICA_URL)"
 SHOPIFY_API_KEY="$(env_value SHOPIFY_API_KEY)"
 SHOPIFY_API_SECRET="$(env_value SHOPIFY_API_SECRET)"
-[[ -n "${DOMAIN}" && -n "${EDGE_NETWORK}" ]] \
-  || fail "CONTROL_PLANE_DOMAIN and EDGE_DOCKER_NETWORK must not be empty."
-[[ -n "${POSTGRES_USER}" && -n "${POSTGRES_PASSWORD}" && -n "${POSTGRES_DB}" ]] \
-  || fail "Production PostgreSQL values must not be empty."
+[[ -n "${DOMAIN}" ]] || fail "CONTROL_PLANE_DOMAIN must not be empty."
 [[ -n "${SALESWITCH_REPLICA_URL}" && -n "${SHOPIFY_API_KEY}" && -n "${SHOPIFY_API_SECRET}" ]] \
   || fail "SALESWITCH_REPLICA_URL, SHOPIFY_API_KEY, and SHOPIFY_API_SECRET must not be empty."
-docker network inspect "${EDGE_NETWORK}" >/dev/null 2>&1 \
-  || fail "Edge Docker network ${EDGE_NETWORK} does not exist."
+if [[ "${LEGACY_LAYOUT}" == true ]]; then
+  CP_POSTGRES_USER="$(env_value CP_POSTGRES_USER)"
+  CP_POSTGRES_PASSWORD="$(env_value CP_POSTGRES_PASSWORD)"
+  CP_POSTGRES_DB="$(env_value CP_POSTGRES_DB)"
+  [[ -n "${CP_POSTGRES_USER}" && -n "${CP_POSTGRES_PASSWORD}" && -n "${CP_POSTGRES_DB}" ]] \
+    || fail "CP_POSTGRES_USER, CP_POSTGRES_PASSWORD, and CP_POSTGRES_DB must not be empty."
+  echo "Layout: existing run-book stack at ${RUNBOOK_DEPLOY_ROOT} (in-place update)"
+else
+  EDGE_NETWORK="$(env_value EDGE_DOCKER_NETWORK)"
+  POSTGRES_USER="$(env_value POSTGRES_USER)"
+  POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)"
+  POSTGRES_DB="$(env_value POSTGRES_DB)"
+  [[ -n "${EDGE_NETWORK}" && -n "${POSTGRES_USER}" \
+    && -n "${POSTGRES_PASSWORD}" && -n "${POSTGRES_DB}" ]] \
+    || fail "EDGE_DOCKER_NETWORK and production PostgreSQL values must not be empty."
+  docker network inspect "${EDGE_NETWORK}" >/dev/null 2>&1 \
+    || fail "Edge Docker network ${EDGE_NETWORK} does not exist."
+  echo "Layout: repo-managed standalone production stack"
+fi
 compose config --quiet
 
 git -C "${REPO_ROOT}" rev-parse --is-inside-work-tree >/dev/null 2>&1 \

@@ -1,6 +1,13 @@
 # OCI production deployment
 
-This stack is deliberately separate from `control-plane-staging`:
+The deployer supports both production layouts without changing Compose project
+names or volumes:
+
+1. The existing run-book layout at `/opt/app-control-plane`, with the Git checkout
+   nested at `/opt/app-control-plane/repo`. This is detected and updated in place.
+2. A fresh repo-managed stack using this directory's `compose.yaml` and `.env`.
+
+The fresh stack is deliberately separate from `control-plane-staging`:
 
 - Compose project: `control-plane-production`
 - Dedicated PostgreSQL, Redis, and badge-graphics volumes
@@ -8,6 +15,14 @@ This stack is deliberately separate from `control-plane-staging`:
 - Backups: `/opt/control-plane-backups`
 
 ## One-time setup
+
+### Existing run-book installation
+
+No files should be moved. Keep `/opt/app-control-plane/.env`, `compose.yaml`, and
+the existing volumes where they are. The deployer adds only the operations-only
+`compose.legacy-overlay.yaml` so schema sync and seed use the checked-out code.
+
+### Fresh installation
 
 ```bash
 cd /opt/app-control-plane
