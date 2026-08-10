@@ -19,10 +19,19 @@ RUN npm ci --include=dev --ignore-scripts
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx prisma generate && npm run build && npm prune --omit=dev
+RUN npx prisma generate && npm run build
+
+# Deployment-only image target. It intentionally retains the Prisma CLI and tsx
+# so schema sync + the idempotent TypeScript seed run with the exact code being
+# deployed, without npx downloading tools at runtime.
+FROM build AS schema
+CMD ["sh", "-c", "npx prisma db push --skip-generate && npm run seed"]
+
+FROM build AS prod-deps
+RUN npm prune --omit=dev
 
 FROM base AS runtime
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/build ./build
 COPY --from=build /app/package.json ./
 COPY --from=build /app/prisma ./prisma

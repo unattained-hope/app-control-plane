@@ -38,11 +38,19 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
 COMPOSE_DIR="${REPO_ROOT}/deploy/oci-staging"
 ENV_FILE="${COMPOSE_DIR}/.env"
-BACKUP_DIR="${BACKUP_DIR:-/opt/app-control-plane/backups}"
+BACKUP_DIR="${BACKUP_DIR:-/opt/control-plane-backups}"
 BACKUP_RETENTION_COUNT=2
 WAIT_ATTEMPTS=30
 HTTPS_ATTEMPTS=12
 SERVICE_MUTATION_STARTED=false
+DOCKER_BIN="$(type -P docker || true)"
+DOCKER_PREFIX=()
+
+# Keep Git/file operations owned by the deployment user while escalating only
+# Docker access on hosts where that user is not a member of the docker group.
+docker() {
+  "${DOCKER_PREFIX[@]}" "${DOCKER_BIN}" "$@"
+}
 
 stage() {
   printf '\n==> %s\n' "$1"
@@ -253,10 +261,18 @@ trap 'handle_failure 130' INT
 trap 'handle_failure 143' TERM
 
 stage "Preflight"
-for required_command in bash git docker curl gzip awk sed mktemp; do
+for required_command in bash git curl gzip awk sed mktemp; do
   command -v "${required_command}" >/dev/null 2>&1 \
     || fail "Required command not found: ${required_command}"
 done
+
+[[ -n "${DOCKER_BIN}" ]] || fail "Required command not found: docker"
+if ! "${DOCKER_BIN}" info >/dev/null 2>&1; then
+  command -v sudo >/dev/null 2>&1 \
+    || fail "Docker requires elevated access, but sudo is unavailable."
+  sudo -v
+  DOCKER_PREFIX=(sudo)
+fi
 
 docker compose version >/dev/null 2>&1 \
   || fail "Docker Compose is unavailable; install the Docker Compose plugin."
@@ -390,17 +406,16 @@ prune_old_backups
 stage "Build control-plane image"
 (
   cd "${COMPOSE_DIR}"
-  docker compose build control-plane
+  docker compose --profile operations build control-plane control-plane-schema
 )
 
-# This repo currently ships schema.prisma without a migrations/ history on staging;
-# `db push` matches the live VM. When migrations are committed, switch this step to
-# `npx prisma migrate deploy`.
-stage "Sync database schema"
+# This repo currently ships schema.prisma without a migrations/ history. The
+# one-shot schema target retains Prisma + tsx, then seeds required registry rows
+# idempotently. When migrations are committed, change its command to migrate deploy.
+stage "Sync database schema and seed required data"
 (
   cd "${COMPOSE_DIR}"
-  docker compose run --rm --no-deps control-plane \
-    npx prisma db push --skip-generate
+  docker compose --profile operations run --rm --no-deps control-plane-schema
 )
 
 stage "Start control-plane stack"
@@ -431,6 +446,52 @@ echo "PID 1: ${CMD_LINE:-unknown}"
   docker compose ps
 )
 
+stage "Verify readiness and authenticated UI"
+ready=false
+for ((attempt = 1; attempt <= WAIT_ATTEMPTS; attempt += 1)); do
+  if (
+    cd "${COMPOSE_DIR}"
+    docker compose exec -T control-plane node -e '
+      fetch("http://127.0.0.1:3000/readyz")
+        .then(async (response) => {
+          const body = await response.text();
+          if (!response.ok) throw new Error(`readyz ${response.status}: ${body}`);
+        })
+    ' >/dev/null 2>&1
+  ); then
+    ready=true
+    break
+  fi
+  sleep 2
+done
+[[ "${ready}" == true ]] \
+  || fail "Internal /readyz did not become healthy; database or Redis is unavailable."
+echo "Internal /readyz: OK"
+
+(
+  cd "${COMPOSE_DIR}"
+  docker compose exec -T control-plane node --input-type=module <<'NODE'
+const origin = "http://127.0.0.1:3000";
+const login = await fetch(`${origin}/dev-login?role=ADMIN&to=/`, {
+  redirect: "manual",
+});
+if (login.status < 300 || login.status >= 400) {
+  throw new Error(`dev-login returned HTTP ${login.status}`);
+}
+const setCookie = login.headers.get("set-cookie");
+const cookie = setCookie?.split(";", 1)[0];
+if (!cookie) throw new Error("dev-login did not issue the role cookie");
+
+const home = await fetch(`${origin}/`, { headers: { cookie } });
+const body = await home.text();
+if (!home.ok) throw new Error(`authenticated / returned HTTP ${home.status}`);
+if (body.includes("Unexpected Server Error") || body.includes("Something went wrong")) {
+  throw new Error("authenticated / rendered the application error boundary");
+}
+console.log("Authenticated /: OK");
+NODE
+)
+
 PUBLIC_URL="https://${CONTROL_PLANE_DOMAIN}"
 BASIC_AUTH="$(load_env_value CONTROL_PLANE_BASIC_AUTH || true)"
 CURL_AUTH_ARGS=()
@@ -451,10 +512,15 @@ for ((attempt = 1; attempt <= HTTPS_ATTEMPTS; attempt += 1)); do
       --max-time 10 \
       "${PUBLIC_URL}/healthz" || true
   )"
-  if [[ "${https_last_code}" == "200" ]]; then
-    https_ready=true
-    break
-  fi
+  case "${https_last_code}" in
+    200 | 301 | 302 | 303 | 307 | 308 | 401 | 403)
+      # Cloudflare Access or legacy Caddy Basic Auth may intercept this public
+      # unauthenticated probe. Internal /readyz + authenticated / already proved
+      # application health; here we only prove that the HTTPS edge is reachable.
+      https_ready=true
+      break
+      ;;
+  esac
 
   printf '.%s' "${https_last_code}"
   sleep 5
@@ -462,34 +528,31 @@ done
 echo
 if [[ "${https_ready}" != true ]]; then
   echo "Last HTTP status for /healthz: ${https_last_code}" >&2
-  if [[ "${https_last_code}" == "401" ]]; then
-    fail "Caddy Basic Auth rejected the probe. Set CONTROL_PLANE_BASIC_AUTH=user:pass in ${ENV_FILE} to match Caddy."
-  fi
   fail "Public HTTPS /healthz verification failed (HTTP ${https_last_code}). Confirm SaleSwitch Caddy proxies ${CONTROL_PLANE_DOMAIN} → control-plane:3000 on network ${SALESWITCH_DOCKER_NETWORK}."
 fi
-echo "HTTPS /healthz: OK"
-printf 'Socket.IO polling: %s ' "${PUBLIC_URL}/socket.io/?EIO=4&transport=polling"
-socket_ready=false
-SOCKET_BODY="$(mktemp)"
-for ((attempt = 1; attempt <= HTTPS_ATTEMPTS; attempt += 1)); do
-  if curl --fail --silent \
-    "${CURL_AUTH_ARGS[@]}" \
-    --output "${SOCKET_BODY}" \
-    --connect-timeout 5 \
-    --max-time 10 \
-    "${PUBLIC_URL}/socket.io/?EIO=4&transport=polling" \
-    && grep -q '"sid"' "${SOCKET_BODY}"; then
-    socket_ready=true
-    break
-  fi
+echo "Public HTTPS edge: reachable (HTTP ${https_last_code})"
 
-  printf '.'
-  sleep 5
-done
+# Cloudflare Access may intentionally intercept public Socket.IO until the
+# token-authenticated path application is configured. Verify the actual server
+# internally; public policy verification remains a separate Access concern.
+printf 'Internal Socket.IO polling: '
+SOCKET_BODY="$(mktemp)"
+(
+  cd "${COMPOSE_DIR}"
+  docker compose exec -T control-plane node -e '
+    fetch("http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling")
+      .then(async (response) => {
+        const body = await response.text();
+        if (!response.ok || !body.includes("\"sid\"")) {
+          throw new Error(`Socket.IO handshake failed (${response.status})`);
+        }
+        process.stdout.write(body);
+      })
+  '
+) >"${SOCKET_BODY}"
+grep -q '"sid"' "${SOCKET_BODY}" || fail "Internal Socket.IO handshake failed."
 rm -f -- "${SOCKET_BODY}"
-echo
-[[ "${socket_ready}" == true ]] \
-  || fail "Socket.IO handshake failed. Confirm the container runs node ./build/server/prod.js (not react-router-serve)."
+echo "OK"
 
 stage "Deployment complete"
 echo "Deployed commit: ${DEPLOYED_SHA}"

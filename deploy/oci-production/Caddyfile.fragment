@@ -1,0 +1,8 @@
+# One-time edge configuration. Merge this block into the Caddyfile that owns
+# ports 80/443 on the OCI VM, then reload that Caddy service.
+# Cloudflare Access is the staff identity perimeter; do not add a public bypass.
+
+admin.saleswitch.cc {
+	encode gzip zstd
+	reverse_proxy cp-prod-web:3000
+}

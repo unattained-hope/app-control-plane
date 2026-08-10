@@ -1,29 +1,19 @@
-# Apoaap Control Plane staging stack for the shared OCI A1 VM (Arm64).
-#
-# Explicit project name — must NOT collide with SaleSwitch's `oci-staging`.
-name: control-plane-staging
+# Apoaap Control Plane production stack on the OCI VM.
+# TLS remains owned by the existing edge Caddy on EDGE_DOCKER_NETWORK; use the
+# unique cp-prod-web alias so staging and production can never round-robin.
+name: control-plane-production
 
 x-control-plane-environment: &control-plane-environment
   NODE_ENV: production
   CONTROL_PLANE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@cp-postgres:5432/${POSTGRES_DB}?schema=public
   REDIS_URL: redis://cp-redis:6379
 
-# Usage (on the VM, from this directory after cloning the repo):
-#   cp .env.example .env   # fill secrets + domain
-#   bash ./deploy.sh
-#
-# Does NOT publish 80/443 — SaleSwitch's Caddy on the shared VM terminates TLS
-# and reverse-proxies CONTROL_PLANE_DOMAIN → control-plane:3000. Attach this
-# Compose project to SaleSwitch's Docker network via SALESWITCH_DOCKER_NETWORK.
-#
-# Service hostnames use the `cp-` prefix so they do not clash with SaleSwitch's
-# `postgres` / `redis` on the shared Docker network.
-
 services:
   control-plane:
     build:
       context: ../..
       dockerfile: Dockerfile
+      target: runtime
     restart: unless-stopped
     env_file:
       - .env
@@ -33,6 +23,7 @@ services:
       BADGE_GRAPHIC_STORAGE_DIR: /data/badge-graphics
       BADGE_GRAPHIC_PUBLIC_BASE_URL: https://${CONTROL_PLANE_DOMAIN}
       BADGE_GRAPHIC_FALLBACK_DIR: ""
+    command: ["node", "./build/server/prod.js"]
     volumes:
       - badge_graphics:/data/badge-graphics
     depends_on:
@@ -40,22 +31,14 @@ services:
         condition: service_healthy
       cp-redis:
         condition: service_healthy
-    # Persistent entry attaches Socket.IO — never react-router-serve.
-    command: ["node", "./build/server/prod.js"]
-    mem_limit: 1536m
-    cpus: 0.75
+    mem_limit: 2048m
+    cpus: 1.0
     networks:
       default:
-      # Unique alias so SaleSwitch Caddy never round-robins with an orphan
-      # still registered as hostname `control-plane` on the shared network.
-      saleswitch_proxy:
+      edge:
         aliases:
-          - cp-web
-          - control-plane
+          - cp-prod-web
 
-  # One-shot deployment task. The `operations` profile keeps it out of normal
-  # `docker compose up`, while deploy.sh can run schema sync + idempotent seed
-  # using build-time tooling that is deliberately absent from the runtime image.
   control-plane-schema:
     build:
       context: ../..
@@ -98,6 +81,8 @@ services:
       - redis-server
       - --appendonly
       - "yes"
+      - --appendfsync
+      - everysec
       - --maxmemory
       - 256mb
       - --maxmemory-policy
@@ -118,8 +103,6 @@ volumes:
   badge_graphics:
 
 networks:
-  # Join SaleSwitch Compose network so its Caddy can reach control-plane:3000.
-  # Default name matches `docker compose` project "oci-staging" under SaleSwitch.
-  saleswitch_proxy:
+  edge:
     external: true
-    name: ${SALESWITCH_DOCKER_NETWORK:-oci-staging_default}
+    name: ${EDGE_DOCKER_NETWORK}
