@@ -61,7 +61,7 @@ env_value() {
   local line
 
   line="$(grep -E "^${key}=" "${ENV_FILE}" | tail -n 1 || true)"
-  [[ -n "${line}" ]] || fail "Missing ${key} in ${ENV_FILE}."
+  [[ -n "${line}" ]] || return 1
   printf '%s' "${line#*=}"
 }
 
@@ -123,28 +123,49 @@ docker info >/dev/null 2>&1 \
 [[ "$(stat -c '%a' "${ENV_FILE}")" == "600" ]] \
   || fail "${ENV_FILE} must have mode 600."
 
-DOMAIN="$(env_value CONTROL_PLANE_DOMAIN)"
-SALESWITCH_REPLICA_URL="$(env_value SALESWITCH_REPLICA_URL)"
-SHOPIFY_API_KEY="$(env_value SHOPIFY_API_KEY)"
-SHOPIFY_API_SECRET="$(env_value SHOPIFY_API_SECRET)"
+DOMAIN="$(env_value CONTROL_PLANE_DOMAIN)" \
+  || fail "Missing CONTROL_PLANE_DOMAIN in ${ENV_FILE}."
+SHOPIFY_API_KEY="$(env_value SHOPIFY_API_KEY)" \
+  || fail "Missing SHOPIFY_API_KEY in ${ENV_FILE}."
+SHOPIFY_API_SECRET="$(env_value SHOPIFY_API_SECRET)" \
+  || fail "Missing SHOPIFY_API_SECRET in ${ENV_FILE}."
 [[ -n "${DOMAIN}" ]] || fail "CONTROL_PLANE_DOMAIN must not be empty."
-[[ -n "${SALESWITCH_REPLICA_URL}" && -n "${SHOPIFY_API_KEY}" && -n "${SHOPIFY_API_SECRET}" ]] \
-  || fail "SALESWITCH_REPLICA_URL, SHOPIFY_API_KEY, and SHOPIFY_API_SECRET must not be empty."
+[[ -n "${SHOPIFY_API_KEY}" && -n "${SHOPIFY_API_SECRET}" ]] \
+  || fail "SHOPIFY_API_KEY and SHOPIFY_API_SECRET must not be empty."
 if [[ "${LEGACY_LAYOUT}" == true ]]; then
-  CP_POSTGRES_USER="$(env_value CP_POSTGRES_USER)"
-  CP_POSTGRES_PASSWORD="$(env_value CP_POSTGRES_PASSWORD)"
-  CP_POSTGRES_DB="$(env_value CP_POSTGRES_DB)"
+  CP_POSTGRES_USER="$(env_value CP_POSTGRES_USER)" \
+    || fail "Missing CP_POSTGRES_USER in ${ENV_FILE}."
+  CP_POSTGRES_PASSWORD="$(env_value CP_POSTGRES_PASSWORD)" \
+    || fail "Missing CP_POSTGRES_PASSWORD in ${ENV_FILE}."
+  CP_POSTGRES_DB="$(env_value CP_POSTGRES_DB)" \
+    || fail "Missing CP_POSTGRES_DB in ${ENV_FILE}."
+  SALESWITCH_GCP_TAILSCALE_IP="$(env_value SALESWITCH_GCP_TAILSCALE_IP)" \
+    || fail "Missing SALESWITCH_GCP_TAILSCALE_IP in ${ENV_FILE}."
+  SALESWITCH_CP_DB_USER="$(env_value SALESWITCH_CP_DB_USER)" \
+    || fail "Missing SALESWITCH_CP_DB_USER in ${ENV_FILE}."
+  SALESWITCH_CP_DB_PASSWORD="$(env_value SALESWITCH_CP_DB_PASSWORD)" \
+    || fail "Missing SALESWITCH_CP_DB_PASSWORD in ${ENV_FILE}."
   [[ -n "${CP_POSTGRES_USER}" && -n "${CP_POSTGRES_PASSWORD}" && -n "${CP_POSTGRES_DB}" ]] \
     || fail "CP_POSTGRES_USER, CP_POSTGRES_PASSWORD, and CP_POSTGRES_DB must not be empty."
+  [[ -n "${SALESWITCH_GCP_TAILSCALE_IP}" && -n "${SALESWITCH_CP_DB_USER}" \
+    && -n "${SALESWITCH_CP_DB_PASSWORD}" ]] \
+    || fail "SaleSwitch replica connection components must not be empty."
   echo "Layout: existing run-book stack at ${RUNBOOK_DEPLOY_ROOT} (in-place update)"
 else
-  EDGE_NETWORK="$(env_value EDGE_DOCKER_NETWORK)"
-  POSTGRES_USER="$(env_value POSTGRES_USER)"
-  POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)"
-  POSTGRES_DB="$(env_value POSTGRES_DB)"
+  SALESWITCH_REPLICA_URL="$(env_value SALESWITCH_REPLICA_URL)" \
+    || fail "Missing SALESWITCH_REPLICA_URL in ${ENV_FILE}."
+  EDGE_NETWORK="$(env_value EDGE_DOCKER_NETWORK)" \
+    || fail "Missing EDGE_DOCKER_NETWORK in ${ENV_FILE}."
+  POSTGRES_USER="$(env_value POSTGRES_USER)" \
+    || fail "Missing POSTGRES_USER in ${ENV_FILE}."
+  POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)" \
+    || fail "Missing POSTGRES_PASSWORD in ${ENV_FILE}."
+  POSTGRES_DB="$(env_value POSTGRES_DB)" \
+    || fail "Missing POSTGRES_DB in ${ENV_FILE}."
   [[ -n "${EDGE_NETWORK}" && -n "${POSTGRES_USER}" \
-    && -n "${POSTGRES_PASSWORD}" && -n "${POSTGRES_DB}" ]] \
-    || fail "EDGE_DOCKER_NETWORK and production PostgreSQL values must not be empty."
+    && -n "${POSTGRES_PASSWORD}" && -n "${POSTGRES_DB}" \
+    && -n "${SALESWITCH_REPLICA_URL}" ]] \
+    || fail "EDGE_DOCKER_NETWORK, SALESWITCH_REPLICA_URL, and PostgreSQL values must not be empty."
   docker network inspect "${EDGE_NETWORK}" >/dev/null 2>&1 \
     || fail "Edge Docker network ${EDGE_NETWORK} does not exist."
   echo "Layout: repo-managed standalone production stack"
