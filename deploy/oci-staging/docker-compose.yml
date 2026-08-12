@@ -5,6 +5,7 @@ name: control-plane-staging
 
 x-control-plane-environment: &control-plane-environment
   NODE_ENV: production
+  SALESWITCH_CONNECTOR_SOURCE: replica
   CONTROL_PLANE_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@cp-postgres:5432/${POSTGRES_DB}?schema=public
   REDIS_URL: redis://cp-redis:6379
 

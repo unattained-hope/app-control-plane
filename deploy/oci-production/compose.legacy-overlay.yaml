@@ -6,6 +6,10 @@
 # Compose resolves relative paths from the first/base Compose file, so ./repo is
 # the existing checkout used by the live control-plane service.
 services:
+  control-plane:
+    environment:
+      SALESWITCH_CONNECTOR_SOURCE: replica
+
   control-plane-schema:
     build:
       context: ./repo
@@ -17,6 +21,7 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      SALESWITCH_CONNECTOR_SOURCE: replica
       CONTROL_PLANE_DATABASE_URL: postgresql://${CP_POSTGRES_USER}:${CP_POSTGRES_PASSWORD}@cp-postgres:5432/${CP_POSTGRES_DB}?schema=public
       SALESWITCH_REPLICA_URL: postgresql://${SALESWITCH_CP_DB_USER}:${SALESWITCH_CP_DB_PASSWORD}@${SALESWITCH_GCP_TAILSCALE_IP}:5433/saleswitch?schema=public&connection_limit=3
       REDIS_URL: redis://cp-redis:6379
