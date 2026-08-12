@@ -22,6 +22,13 @@ const EnvSchema = z.object({
   // in production; validated here as the runtime-injected value.
   SALESWITCH_REPLICA_URL: z.string().url(),
 
+  // Connector source selection. `auto` preserves the runtime policy (replica in
+  // local development, deterministic fixture elsewhere); E2E pins `fixture` so
+  // browser tests never depend on or mutate a live SaleSwitch database.
+  SALESWITCH_CONNECTOR_SOURCE: z
+    .enum(["auto", "fixture", "replica"])
+    .default("auto"),
+
   // Redis backs BullMQ + the Socket.IO adapter.
   REDIS_URL: z.string().url(),
 

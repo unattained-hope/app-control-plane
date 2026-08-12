@@ -31,6 +31,12 @@ export function registerConnectorBuilder(
 
 function resolveDefaultSource(): ReplicaReadSource {
   const cfg = getConfig();
+  if (cfg.SALESWITCH_CONNECTOR_SOURCE === "fixture") {
+    return makeFixtureSource(defaultFixtureSeed());
+  }
+  if (cfg.SALESWITCH_CONNECTOR_SOURCE === "replica") {
+    return makeBadgyReplicaSource(cfg.SALESWITCH_REPLICA_URL);
+  }
   // Local dev: read real merchants from the sibling Badgy Postgres (SALESWITCH_REPLICA_URL).
   if (cfg.NODE_ENV === "development") {
     return makeBadgyReplicaSource(cfg.SALESWITCH_REPLICA_URL);

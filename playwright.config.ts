@@ -6,6 +6,7 @@ import { defineConfig, devices } from "@playwright/test";
  * (CLAUDE.md): headed chromium.
  */
 const PORT = 3100;
+const chromeExecutable = process.env.PLAYWRIGHT_CHROME_PATH;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -22,13 +23,19 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"], headless: false },
+      use: {
+        ...devices["Desktop Chrome"],
+        headless: false,
+        launchOptions: chromeExecutable
+          ? { executablePath: chromeExecutable }
+          : undefined,
+      },
     },
   ],
   webServer: {
     // Load the control-plane .env into the server process (Vite doesn't populate
     // process.env for server code by default); pin the port for determinism.
-    command: `node --env-file=.env node_modules/@react-router/dev/bin.js dev --port ${PORT}`,
+    command: `SALESWITCH_CONNECTOR_SOURCE=fixture node --env-file=.env node_modules/@react-router/dev/bin.js dev --port ${PORT}`,
     url: `http://localhost:${PORT}/healthz`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

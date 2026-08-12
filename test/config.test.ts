@@ -8,6 +8,7 @@ describe("config", () => {
     const cfg = loadConfig(validEnvObject());
     expect(cfg.CONTROL_PLANE_DATABASE_URL).toContain("postgresql://");
     expect(cfg.SUBSCRIPTION_CACHE_TTL_SECONDS).toBeGreaterThan(0);
+    expect(cfg.SALESWITCH_CONNECTOR_SOURCE).toBe("auto");
   });
 
   it("throws when a required var is missing", () => {
@@ -20,6 +21,14 @@ describe("config", () => {
     const env = validEnvObject();
     env.SALESWITCH_REPLICA_URL = "not-a-url";
     expect(() => loadConfig(env)).toThrow();
+  });
+
+  it("accepts an explicit fixture connector for isolated browser tests", () => {
+    const cfg = loadConfig({
+      ...validEnvObject(),
+      SALESWITCH_CONNECTOR_SOURCE: "fixture",
+    } as NodeJS.ProcessEnv);
+    expect(cfg.SALESWITCH_CONNECTOR_SOURCE).toBe("fixture");
   });
 
   it("gates app-backed actions on BOTH admin API url + token", () => {
