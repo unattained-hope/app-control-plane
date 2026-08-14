@@ -23,4 +23,11 @@ jobs:
         run: npm run typecheck
       - name: Unit + connector smoke/replica tests
         run: npm test
+        env:
+          NODE_ENV: test
+          CONTROL_PLANE_DATABASE_URL: postgresql://test:test@localhost:5432/control_plane_test
+          SALESWITCH_REPLICA_URL: postgresql://readonly:readonly@localhost:5432/saleswitch_test
+          REDIS_URL: redis://localhost:6379
+          SHOPIFY_API_KEY: ci_test_key
+          SHOPIFY_API_SECRET: ci_test_secret
   # The deploy job (omitted) `needs: verify`, so a failing check blocks deploy.
