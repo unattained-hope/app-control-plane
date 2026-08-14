@@ -29,6 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Apoaap Control Plane</title>
+        <script src="https://cdn.shopify.com/shopifycloud/polaris.js" defer />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Meta />
         <Links />

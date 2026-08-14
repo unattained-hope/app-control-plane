@@ -113,16 +113,12 @@ export default function UsageFunnel() {
               ) : null}
             </div>
             {segmented ? (
-              <div
-                role="status"
-                aria-label="Segment slicing not yet available"
-                className="apoaap-callout-note mt-3 px-3 py-2"
-              >
-                <Text className="text-xs text-cp-note-text">
+              <div className="mt-3">
+                <s-banner heading="Segment filters aren’t available yet" tone="info">
                   Segment-sliced funnels are coming soon — Phase 3 pre-rolls the overall
                   funnel today; a plan/lifecycle-dimensioned metric will make these filters
                   live. Showing the unsegmented funnel below.
-                </Text>
+                </s-banner>
               </div>
             ) : null}
           </Card>
