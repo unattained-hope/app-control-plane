@@ -349,14 +349,15 @@ function BillingCard({ shop }: { readonly shop: string }) {
       </Flex>
 
       {sub.stale ? (
-        <div className="mt-2">
-          <s-banner
-            heading="Subscription data may be out of date"
-            tone="warning"
-          >
+        <div
+          role="status"
+          aria-label="Subscription data is stale"
+          className="mt-2 apoaap-callout-note px-2 py-1"
+        >
+          <Text className="text-xs text-cp-note-text">
             Live billing read failed — showing the last known value, which may be
             out of date.
-          </s-banner>
+          </Text>
         </div>
       ) : null}
 

@@ -73,12 +73,16 @@ export default function UsageAlerts() {
       asOf={null}
     >
       <Card>
-        <div className="mb-4">
-          <s-banner heading="How alert rules work" tone="info">
+        <div
+          className="apoaap-callout-note mb-4 px-3 py-2"
+          role="note"
+          aria-label="How alert rules work"
+        >
+          <Text className="text-xs text-cp-note-text">
             Rules are seeded disabled. Enable one to start evaluating it after each daily
             finalization; an enabled rule alerts once when it breaches and once when it
             recovers. Thresholds are editable here without a redeploy.
-          </s-banner>
+          </Text>
         </div>
 
         <table className="apoaap-audit-table" aria-label="Usage alert rules">

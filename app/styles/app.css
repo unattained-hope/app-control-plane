@@ -538,6 +538,11 @@
     letter-spacing: 0.06em;
     color: var(--cp-text-muted);
   }
+  .apoaap-callout-note {
+    border: 1px solid var(--cp-note-border);
+    background: var(--cp-note-bg);
+    border-radius: var(--cp-radius-sm);
+  }
   .apoaap-callout-success {
     border: 1px solid var(--cp-success-border);
     background: var(--cp-success-bg);
