@@ -11,15 +11,15 @@ const { mintShopToken, verifyShopToken, isAllowedOrigin } = await import(
 /** cp-support-inbox — host-minted shop-scoped tokens + explicit-origin CORS. */
 describe("shop session tokens", () => {
   it("round-trips and returns the shop + appKey claims", () => {
-    const token = mintShopToken("aurora-threads.myshopify.com", "saleswitch");
+    const token = mintShopToken("test-shop.myshopify.com", "saleswitch");
     const claims = verifyShopToken(token);
     expect(claims).not.toBeNull();
-    expect(claims!.shop).toBe("aurora-threads.myshopify.com");
+    expect(claims!.shop).toBe("test-shop.myshopify.com");
     expect(claims!.appKey).toBe("saleswitch");
   });
 
   it("rejects a tampered token", () => {
-    const token = mintShopToken("aurora-threads.myshopify.com", "saleswitch");
+    const token = mintShopToken("test-shop.myshopify.com", "saleswitch");
     const tampered = token.slice(0, -2) + (token.endsWith("a") ? "bb" : "aa");
     expect(verifyShopToken(tampered)).toBeNull();
   });
@@ -35,7 +35,7 @@ describe("shop session tokens", () => {
   });
 
   it("allows admin.shopify.com, the shop origin, and configured host-app origins", () => {
-    const shop = "aurora-threads.myshopify.com";
+    const shop = "test-shop.myshopify.com";
     expect(isAllowedOrigin("https://admin.shopify.com", shop)).toBe(true);
     expect(isAllowedOrigin(`https://${shop}`, shop)).toBe(true);
     expect(isAllowedOrigin("https://evil.example", shop)).toBe(false);
@@ -48,7 +48,7 @@ describe("shop session tokens", () => {
     process.env.SALESWITCH_INTERNAL_API_URL = "https://staging.saleswitch.apoaap.shop";
     const { __resetConfigForTests } = await import("~/lib/config.js");
     __resetConfigForTests();
-    const shop = "aurora-threads.myshopify.com";
+    const shop = "test-shop.myshopify.com";
     expect(isAllowedOrigin("https://staging.saleswitch.apoaap.shop", shop)).toBe(true);
     expect(isAllowedOrigin("https://evil.example", shop)).toBe(false);
   });
@@ -59,7 +59,7 @@ describe("shop session tokens", () => {
       "https://staging.saleswitch.apoaap.shop,https://saleswitch.apoaap.shop";
     const { __resetConfigForTests } = await import("~/lib/config.js");
     __resetConfigForTests();
-    const shop = "aurora-threads.myshopify.com";
+    const shop = "test-shop.myshopify.com";
     expect(isAllowedOrigin("https://staging.saleswitch.apoaap.shop", shop)).toBe(true);
     expect(isAllowedOrigin("https://saleswitch.apoaap.shop", shop)).toBe(true);
   });

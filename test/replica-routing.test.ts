@@ -3,6 +3,7 @@ import { stubValidEnv } from "./helpers/env.js";
 import { SaleSwitchConnector } from "~/server/connectors/saleswitchConnector.js";
 import type { ReplicaReadSource } from "~/server/connectors/saleswitchConnector.js";
 import { makeFixtureSource } from "~/server/connectors/fixtureSource.js";
+import { MERCHANT_ROWS_FIXTURE } from "./fixtures/merchantRows.fixture.js";
 
 // SaleSwitchConnector reads config (app-API gating) at construction.
 beforeAll(() => stubValidEnv());
@@ -18,12 +19,12 @@ describe("SaleSwitchConnector replica-only routing", () => {
   });
 
   it("constructs with a replica-only fixture source", () => {
-    const connector = new SaleSwitchConnector(makeFixtureSource());
+    const connector = new SaleSwitchConnector(makeFixtureSource([...MERCHANT_ROWS_FIXTURE]));
     expect(connector.key).toBe("saleswitch");
   });
 
   it("listMerchants returns the common MerchantRow shape, never raw rows", async () => {
-    const connector = new SaleSwitchConnector(makeFixtureSource());
+    const connector = new SaleSwitchConnector(makeFixtureSource([...MERCHANT_ROWS_FIXTURE]));
     const page = await connector.listMerchants({ page: 1, pageSize: 25 });
     expect(page.rows.length).toBeGreaterThan(0);
     const row = page.rows[0]!;

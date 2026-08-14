@@ -22,9 +22,8 @@ const EnvSchema = z.object({
   // in production; validated here as the runtime-injected value.
   SALESWITCH_REPLICA_URL: z.string().url(),
 
-  // Connector source selection. `auto` preserves the runtime policy (replica in
-  // local development, deterministic fixture elsewhere); E2E pins `fixture` so
-  // browser tests never depend on or mutate a live SaleSwitch database.
+  // Connector source selection. `auto` and `replica` use the configured read-only
+  // source; E2E pins `fixture` so synthetic merchants are always an explicit choice.
   SALESWITCH_CONNECTOR_SOURCE: z
     .enum(["auto", "fixture", "replica"])
     .default("auto"),

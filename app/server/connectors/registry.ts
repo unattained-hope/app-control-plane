@@ -4,7 +4,7 @@ import {
   buildSaleSwitchConnector,
   type ReplicaReadSource,
 } from "./saleswitchConnector.js";
-import { makeFixtureSource, defaultFixtureSeed } from "./fixtureSource.js";
+import { makeFixtureSource } from "./fixtureSource.js";
 import { makeBadgyReplicaSource } from "./badgyReplicaSource.js";
 import { getConfig } from "~/lib/config.js";
 
@@ -32,16 +32,11 @@ export function registerConnectorBuilder(
 function resolveDefaultSource(): ReplicaReadSource {
   const cfg = getConfig();
   if (cfg.SALESWITCH_CONNECTOR_SOURCE === "fixture") {
-    return makeFixtureSource(defaultFixtureSeed());
+    return makeFixtureSource();
   }
-  if (cfg.SALESWITCH_CONNECTOR_SOURCE === "replica") {
-    return makeBadgyReplicaSource(cfg.SALESWITCH_REPLICA_URL);
-  }
-  // Local dev: read real merchants from the sibling Badgy Postgres (SALESWITCH_REPLICA_URL).
-  if (cfg.NODE_ENV === "development") {
-    return makeBadgyReplicaSource(cfg.SALESWITCH_REPLICA_URL);
-  }
-  return makeFixtureSource(defaultFixtureSeed());
+  // Both `auto` and `replica` use the configured read-only source. Synthetic
+  // merchants must be an explicit test/E2E choice, never a production fallback.
+  return makeBadgyReplicaSource(cfg.SALESWITCH_REPLICA_URL);
 }
 
 // SaleSwitch's builder. The replica source is swappable (real replica client vs

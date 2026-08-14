@@ -287,6 +287,9 @@
       border-color var(--cp-transition),
       box-shadow var(--cp-transition);
   }
+  .apoaap-audit .apoaap-audit-table-card {
+    padding: 0;
+  }
   .apoaap-merchant-table-wrap,
   .apoaap-audit-table-wrap {
     overflow-x: auto;
@@ -413,12 +416,114 @@
   .apoaap-audit-filter-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-    gap: 0.75rem;
+    gap: 0.625rem;
+    align-items: end;
   }
   .apoaap-audit-filter-actions {
     display: flex;
     gap: 0.5rem;
-    margin-top: 0.75rem;
+    align-items: center;
+    min-height: 2.25rem;
+  }
+
+  /* The audit filters behave as a single dense toolbar on large screens and
+     wrap into practical field widths when the shell gets narrower. */
+  .apoaap-audit-header {
+    gap: 1rem;
+    margin-bottom: 0.875rem;
+  }
+  .apoaap-audit-description {
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    color: var(--cp-text-subtle);
+  }
+  .apoaap-audit-as-of {
+    flex-shrink: 0;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--cp-border);
+    border-radius: 9999px;
+    background: var(--cp-surface);
+    color: var(--cp-text-subtle);
+    font-size: 0.72rem;
+  }
+  .apoaap-audit-filters {
+    padding: 0.75rem;
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    background: var(--cp-surface);
+    box-shadow: var(--cp-shadow-card);
+  }
+  .apoaap-audit-field {
+    min-width: 0;
+  }
+  .apoaap-audit-field label {
+    margin-bottom: 0.2rem;
+    font-size: 0.7rem;
+    line-height: 1rem;
+  }
+  .apoaap-audit-field input,
+  .apoaap-audit-field select {
+    width: 100%;
+    min-width: 0;
+    height: 2.25rem;
+    padding: 0.35rem 0.55rem;
+    line-height: 1.25rem;
+  }
+  .apoaap-audit-filters .apoaap-btn {
+    height: 2.25rem;
+    padding-inline: 0.75rem;
+    white-space: nowrap;
+  }
+  .apoaap-audit .apoaap-audit-th {
+    padding: 0.55rem 0.75rem;
+  }
+  .apoaap-audit .apoaap-audit-td {
+    padding: 0.55rem 0.75rem;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+  .apoaap-audit .apoaap-audit-table-wrap {
+    max-height: calc(100vh - 15rem);
+    overflow: auto;
+  }
+  .apoaap-audit .apoaap-audit-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .apoaap-audit .apoaap-audit-count {
+    display: block;
+    padding: 0.55rem 0.75rem;
+    border-top: 1px solid var(--cp-border);
+    background: var(--cp-surface-2);
+    font-size: 0.72rem;
+    color: var(--cp-text-subtle);
+  }
+  @media (min-width: 1500px) {
+    .apoaap-audit-filter-grid {
+      grid-template-columns:
+        minmax(8rem, 1fr)
+        minmax(6rem, 0.7fr)
+        minmax(10rem, 1.15fr)
+        minmax(10rem, 1.15fr)
+        minmax(6.5rem, 0.75fr)
+        minmax(5.5rem, 0.65fr)
+        minmax(10rem, 1.1fr)
+        minmax(10rem, 1.1fr)
+        auto;
+    }
+  }
+  @media (max-width: 640px) {
+    .apoaap-audit {
+      padding: 1rem;
+    }
+    .apoaap-audit-header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .apoaap-audit-filter-grid {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── Buttons ────────────────────────────────────────────────────────── */

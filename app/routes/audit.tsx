@@ -243,11 +243,20 @@ export default function Audit() {
 
   return (
     <main className="apoaap-audit p-6" aria-label="Audit log">
-      <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>Audit log</Title>
+      <Flex
+        justifyContent="between"
+        alignItems="center"
+        className="apoaap-audit-header"
+      >
+        <div>
+          <Title>Audit log</Title>
+          <Text className="apoaap-audit-description">
+            User and system activity across the control plane
+          </Text>
+        </div>
         {asOf ? (
-          <Text className="text-xs text-tremor-content-subtle">
-            as of <time dateTime={asOf}>{formatTimestamp(asOf)}</time>
+          <Text className="apoaap-audit-as-of">
+            Updated <time dateTime={asOf}>{formatTimestamp(asOf)}</time>
           </Text>
         ) : null}
       </Flex>
@@ -255,7 +264,7 @@ export default function Audit() {
       <form
         role="search"
         aria-label="Filter audit log"
-        className="apoaap-audit-filters mb-4"
+        className="apoaap-audit-filters"
         onSubmit={submitFilters}
       >
         <div className="apoaap-audit-filter-grid">
@@ -363,21 +372,20 @@ export default function Audit() {
               onChange={(event) => updateDraft("to", event.target.value)}
             />
           </div>
-        </div>
-
-        <div className="apoaap-audit-filter-actions">
-          <button type="submit" className="apoaap-btn">
-            Apply filters
-          </button>
-          {hasAppliedFilters ? (
-            <button
-              type="button"
-              className="apoaap-btn apoaap-btn-secondary"
-              onClick={clearFilters}
-            >
-              Clear
+          <div className="apoaap-audit-filter-actions">
+            <button type="submit" className="apoaap-btn">
+              Apply
             </button>
-          ) : null}
+            {hasAppliedFilters ? (
+              <button
+                type="button"
+                className="apoaap-btn apoaap-btn-secondary"
+                onClick={clearFilters}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
         </div>
       </form>
 
@@ -465,18 +473,15 @@ export default function Audit() {
             </table>
           </div>
         )}
-      </Card>
 
-      {!auditQuery.isError && rows.length > 0 ? (
-        <Text
-          className="apoaap-audit-count mt-4 text-xs text-tremor-content-subtle"
-          role="status"
-        >
-          {rows.length >= RESULT_LIMIT
-            ? `Showing the latest ${RESULT_LIMIT} entries — narrow the filters to see older events.`
-            : `Showing ${rows.length} ${rows.length === 1 ? "entry" : "entries"}.`}
-        </Text>
-      ) : null}
+        {!auditQuery.isError && rows.length > 0 ? (
+          <Text className="apoaap-audit-count" role="status">
+            {rows.length >= RESULT_LIMIT
+              ? `Latest ${RESULT_LIMIT} entries — use filters to find older events.`
+              : `${rows.length} ${rows.length === 1 ? "entry" : "entries"}`}
+          </Text>
+        ) : null}
+      </Card>
     </main>
   );
 }

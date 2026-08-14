@@ -8,7 +8,30 @@ import { SALESWITCH_REPLICA_REF } from "../app/lib/secrets.js";
  */
 const prisma = new PrismaClient();
 
+// These domains belong exclusively to the deterministic connector fixture. Early
+// deployments could select that fixture implicitly and persist growth-rollup health
+// snapshots for it. Remove those snapshots idempotently during deploy; audit history
+// remains append-only, and explicit fixture-mode test runs can recreate test snapshots.
+const DEMO_MERCHANT_SHOPS = [
+  "aurora-threads.myshopify.com",
+  "bold-brew-coffee.myshopify.com",
+  "cascade-outdoors.myshopify.com",
+  "delta-digital.myshopify.com",
+  "ember-home.myshopify.com",
+] as const;
+
 async function main(): Promise<void> {
+  const removedDemoHealth = await prisma.merchantHealthSnapshot.deleteMany({
+    where: {
+      appKey: "saleswitch",
+      shop: { in: [...DEMO_MERCHANT_SHOPS] },
+    },
+  });
+  if (removedDemoHealth.count > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`Removed ${removedDemoHealth.count} demo merchant health snapshots`);
+  }
+
   await prisma.app.upsert({
     where: { key: "saleswitch" },
     create: {

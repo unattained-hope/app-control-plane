@@ -1,21 +1,27 @@
 import { describe, it, expect } from "vitest";
 import { makeFixtureSource } from "~/server/connectors/fixtureSource.js";
+import { MERCHANT_ROWS_FIXTURE } from "./fixtures/merchantRows.fixture.js";
 
 /** cp-merchant-directory — server-side search, sort, pagination. */
 describe("directory search/sort/pagination", () => {
-  const source = makeFixtureSource();
+  const source = makeFixtureSource([...MERCHANT_ROWS_FIXTURE]);
+
+  it("starts empty unless a test injects merchant rows", async () => {
+    const empty = await makeFixtureSource().queryShops({});
+    expect(empty).toEqual({ rows: [], total: 0 });
+  });
 
   it("search spans shop domain", async () => {
-    const { rows } = await source.queryShops({ search: "aurora" });
-    expect(rows.map((r) => r.shopDomain)).toContain("aurora-threads.myshopify.com");
+    const { rows } = await source.queryShops({ search: "alpha" });
+    expect(rows.map((r) => r.shopDomain)).toContain("test-alpha.myshopify.com");
   });
 
   it("search spans email and name (not just domain)", async () => {
-    const byEmail = await source.queryShops({ search: "hello@boldbrew" });
-    expect(byEmail.rows.map((r) => r.shopDomain)).toContain("bold-brew-coffee.myshopify.com");
+    const byEmail = await source.queryShops({ search: "beta@example" });
+    expect(byEmail.rows.map((r) => r.shopDomain)).toContain("test-beta.myshopify.com");
 
-    const byName = await source.queryShops({ search: "Cascade" });
-    expect(byName.rows.map((r) => r.shopDomain)).toContain("cascade-outdoors.myshopify.com");
+    const byName = await source.queryShops({ search: "Test Gamma" });
+    expect(byName.rows.map((r) => r.shopDomain)).toContain("test-gamma.myshopify.com");
   });
 
   it("sort by installDate desc orders newest-first", async () => {

@@ -5,50 +5,11 @@ import type {
 } from "./saleswitchConnector.js";
 
 /**
- * In-memory replica fixture (cp-app-registry-connector). Stands in for the
- * SaleSwitch read-replica until D1 provisions one. It is `isReplicaOnly: true`
- * because it CANNOT reach a primary — satisfying the replica-routing invariant.
- *
- * Performs the same server-side filter/sort/paginate the real connector pushes
- * to the replica, so directory behavior (search across domain/name/email, sort,
- * pagination) is exercised end-to-end without a database.
+ * In-memory replica source for isolated tests. It intentionally starts empty so
+ * selecting `fixture` can never surface invented merchants in the application.
+ * Tests that need rows inject test-local data explicitly.
  */
-function mk(
-  shopDomain: string,
-  displayName: string | null,
-  contactEmail: string | null,
-  status: string,
-  lifecycle: string,
-  plan: string | null,
-  installedDaysAgo: number,
-  uninstalledDaysAgo: number | null,
-): RawShopRow {
-  const day = 24 * 60 * 60 * 1000;
-  const base = Date.UTC(2026, 5, 22); // fixed clock so fixtures are deterministic
-  return {
-    shopDomain,
-    displayName,
-    contactEmail,
-    status,
-    lifecycle,
-    plan,
-    installedAt: new Date(base + installedDaysAgo * day),
-    uninstalledAt: uninstalledDaysAgo === null ? null : new Date(base + uninstalledDaysAgo * day),
-  };
-}
-
-/** Deterministic fixture merchants for tests / non-dev environments. */
-export function defaultFixtureSeed(): RawShopRow[] {
-  return [
-    mk("aurora-threads.myshopify.com", "Aurora Threads", "owner@aurora.test", "active", "active", "Pro", 120, null),
-    mk("bold-brew-coffee.myshopify.com", "Bold Brew Coffee", "hello@boldbrew.test", "active", "active", "Starter", 90, null),
-    mk("cascade-outdoors.myshopify.com", "Cascade Outdoors", "team@cascade.test", "active", "active", "Pro", 60, null),
-    mk("delta-digital.myshopify.com", "Delta Digital", "ops@delta.test", "installing", "onboarding", null, 7, null),
-    mk("ember-home.myshopify.com", "Ember Home", "support@ember.test", "uninstalled", "churned", "Starter", 200, 14),
-  ];
-}
-
-export function makeFixtureSource(seed: RawShopRow[] = defaultFixtureSeed()): ReplicaReadSource {
+export function makeFixtureSource(seed: RawShopRow[] = []): ReplicaReadSource {
   const data = [...seed];
 
   return {

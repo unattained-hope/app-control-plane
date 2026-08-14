@@ -31,7 +31,7 @@ test.describe("synthetic: operator journey", () => {
     await page.goto("/merchants");
     const directory = page.getByRole("main", { name: "Merchant directory" });
     await expect(directory).toBeVisible();
-    await page.getByRole("searchbox", { name: "Search merchants" }).fill("aurora");
+    await page.getByRole("searchbox", { name: "Search merchants" }).fill("health-check");
 
     // 3. Open the inbox and confirm its search surface renders.
     await page.goto("/inbox");
