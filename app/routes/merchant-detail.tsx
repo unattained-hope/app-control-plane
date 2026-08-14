@@ -9,6 +9,8 @@ import {
   Grid,
   List,
   ListItem,
+  Metric,
+  ProgressBar,
   Tab,
   TabGroup,
   TabList,
@@ -20,6 +22,7 @@ import {
   Title,
 } from "@tremor/react";
 import type { inferRouterOutputs } from "@trpc/server";
+import { Ban, Check, Circle, Eye, Flag, WandSparkles } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
 import type { AppRouter } from "~/server/trpc/root.js";
 
@@ -27,6 +30,19 @@ type MerchantOverview = NonNullable<inferRouterOutputs<AppRouter>["directory"]["
 type ConversationSummary = MerchantOverview["conversations"][number];
 type AuditEntry = MerchantOverview["audit"][number];
 type ActivityEvent = inferRouterOutputs<AppRouter>["usage"]["activity"]["events"][number];
+type CampaignMonitorResult = inferRouterOutputs<AppRouter>["directory"]["campaignMonitor"];
+type CampaignMonitor = NonNullable<CampaignMonitorResult["monitor"]>;
+type CampaignSummary = CampaignMonitor["active"][number];
+
+type JourneyStep = { readonly event: ActivityEvent; readonly count: number };
+type JourneySession = {
+  readonly id: string;
+  readonly startedAt: string;
+  readonly endedAt: string;
+  readonly steps: readonly JourneyStep[];
+};
+
+const ACTIVITY_SESSION_GAP_MS = 30 * 60 * 1_000;
 
 /**
  * Merchant detail (cp-merchant-directory + cp-billing-read + cp-merchant-actions).
@@ -383,6 +399,227 @@ function BillingCard({ shop }: { readonly shop: string }) {
   );
 }
 
+const CAMPAIGN_STATUS_LABELS: Readonly<Record<string, string>> = {
+  DRAFT: "Draft",
+  SCHEDULED: "Scheduled",
+  ACTIVE: "Active",
+  PAUSED: "Paused",
+  COMPLETED: "Completed",
+  REVERTED: "Reverted",
+  EARLY_REVERTED: "Early reverted",
+  UNINSTALL_ORPHANED: "Uninstall orphaned",
+};
+
+const ALLOWANCE_LABELS: Readonly<Record<string, string>> = {
+  CAMPAIGN_LAUNCH: "Campaign launches",
+  PRODUCT_VARIANT_UPDATE: "Product variant updates",
+  AI_CREDIT: "AI credits",
+};
+
+function CampaignList({
+  title,
+  campaigns,
+  total,
+}: {
+  readonly title: string;
+  readonly campaigns: readonly CampaignSummary[];
+  readonly total: number;
+}) {
+  return (
+    <section aria-label={title}>
+      <Flex justifyContent="between" alignItems="baseline">
+        <Text className="font-medium text-tremor-content-strong dark:text-dark-tremor-content-strong">
+          {title}
+        </Text>
+        {total > campaigns.length ? (
+          <Text className="text-xs text-tremor-content-subtle">
+            Showing {campaigns.length} of {total}
+          </Text>
+        ) : null}
+      </Flex>
+      {campaigns.length === 0 ? (
+        <Text className="mt-2 text-sm text-tremor-content-subtle">None.</Text>
+      ) : (
+        <List className="mt-1">
+          {campaigns.map((campaign) => (
+            <ListItem key={campaign.id} className="items-start gap-3">
+              <div className="min-w-0">
+                <Text className="truncate font-medium">{campaign.name}</Text>
+                <Text className="text-xs text-tremor-content-subtle">
+                  {campaign.recurring ? "Recurring" : "One-time"}
+                  {campaign.productCount !== null
+                    ? ` · ${campaign.productCount.toLocaleString()} products`
+                    : ""}
+                </Text>
+              </div>
+              <div className="shrink-0 text-right">
+                <Text className="text-xs">
+                  {campaign.startAt ? formatTimestamp(campaign.startAt) : "No start time"}
+                </Text>
+                {campaign.endAt ? (
+                  <Text className="text-xs text-tremor-content-subtle">
+                    Ends {formatTimestamp(campaign.endAt)}
+                  </Text>
+                ) : null}
+              </div>
+            </ListItem>
+          ))}
+        </List>
+      )}
+    </section>
+  );
+}
+
+function CampaignMonitorCard({ shop }: { readonly shop: string }) {
+  const query = trpc.directory.campaignMonitor.useQuery(
+    { shop },
+    { enabled: shop.length > 0 },
+  );
+
+  if (query.isLoading) {
+    return (
+      <Card className="lg:col-span-2" aria-label="Campaigns and allowances" aria-busy="true">
+        <Title>Campaigns &amp; allowances</Title>
+        <Text className="mt-2" role="status">Loading campaign state…</Text>
+      </Card>
+    );
+  }
+  if (query.isError) {
+    return (
+      <Card className="lg:col-span-2" aria-label="Campaigns and allowances" role="alert">
+        <Title>Campaigns &amp; allowances</Title>
+        <Text className="mt-2 text-cp-danger">Campaign state is currently unavailable.</Text>
+        <Text className="mt-1 text-xs text-tremor-content-subtle">{query.error.message}</Text>
+      </Card>
+    );
+  }
+  if (!query.data?.supported) {
+    return (
+      <Card className="lg:col-span-2" aria-label="Campaigns and allowances">
+        <Title>Campaigns &amp; allowances</Title>
+        <Text className="mt-2 text-tremor-content-subtle">
+          This app connector does not provide campaign monitoring.
+        </Text>
+      </Card>
+    );
+  }
+  const monitor = query.data.monitor;
+  if (!monitor) {
+    return (
+      <Card className="lg:col-span-2" aria-label="Campaigns and allowances">
+        <Title>Campaigns &amp; allowances</Title>
+        <Text className="mt-2 text-tremor-content-subtle">No campaign data exists for this shop.</Text>
+      </Card>
+    );
+  }
+
+  const headline = [
+    ["Active", monitor.counts.ACTIVE],
+    ["Scheduled", monitor.counts.SCHEDULED],
+    ["Total", monitor.total],
+    ["Paused", monitor.counts.PAUSED],
+  ] as const;
+  const secondaryStatuses = [
+    "DRAFT",
+    "COMPLETED",
+    "REVERTED",
+    "EARLY_REVERTED",
+    "UNINSTALL_ORPHANED",
+  ] as const;
+
+  return (
+    <Card className="lg:col-span-2" aria-label="Campaigns and allowances">
+      <Flex justifyContent="between" alignItems="start" className="gap-4">
+        <div>
+          <Title>Campaigns &amp; allowances</Title>
+          <Text className="mt-1 text-xs text-tremor-content-subtle">
+            {monitor.plan} plan · replica state
+          </Text>
+          <Text className="mt-1 text-xs text-tremor-content-subtle">
+            Next scheduled start: {formatTimestamp(monitor.nextScheduledAt)}
+          </Text>
+        </div>
+        <AsOf iso={monitor.asOf} />
+      </Flex>
+
+      {monitor.billingSuspended ? (
+        <div className="mt-3 rounded-md bg-amber-50 px-3 py-2 dark:bg-amber-950" role="status">
+          <Text className="text-sm text-amber-800 dark:text-amber-200">
+            Billing is suspended; SaleSwitch will block new campaign work until it is resolved.
+          </Text>
+        </div>
+      ) : null}
+
+      <Grid numItemsSm={2} numItemsLg={4} className="mt-4 gap-3">
+        {headline.map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-tremor-border p-3 dark:border-dark-tremor-border">
+            <Text>{label}</Text>
+            <Metric>{value.toLocaleString()}</Metric>
+          </div>
+        ))}
+      </Grid>
+      <div className="mt-3 flex flex-wrap gap-2" aria-label="Campaign status breakdown">
+        {secondaryStatuses.map((status) => (
+          <Badge key={status} color={monitor.counts[status] > 0 ? "blue" : "gray"}>
+            {CAMPAIGN_STATUS_LABELS[status]} {monitor.counts[status]}
+          </Badge>
+        ))}
+      </div>
+
+      <Divider className="my-4" />
+      <Title>Plan allowances</Title>
+      <div className="mt-3 grid gap-4 lg:grid-cols-3">
+        {monitor.allowances.map((allowance) => {
+          const exhausted = allowance.limit !== null && allowance.remaining === 0;
+          const overLimit = allowance.limit !== null && allowance.used > allowance.limit;
+          const percent = allowance.limit === null || allowance.limit === 0
+            ? 0
+            : Math.min(100, (allowance.used / allowance.limit) * 100);
+          return (
+            <div key={allowance.metric} className="rounded-lg border border-tremor-border p-3 dark:border-dark-tremor-border">
+              <Flex justifyContent="between" alignItems="baseline" className="gap-2">
+                <Text className="font-medium">{ALLOWANCE_LABELS[allowance.metric]}</Text>
+                {allowance.limit === null ? <Badge color="emerald">Unlimited</Badge> : null}
+              </Flex>
+              {allowance.limit === null ? (
+                <Text className="mt-2 text-sm text-tremor-content-subtle">
+                  {allowance.used.toLocaleString()} used
+                </Text>
+              ) : (
+                <>
+                  <ProgressBar value={percent} color={exhausted ? "rose" : percent >= 80 ? "amber" : "blue"} className="mt-3" />
+                  <Flex justifyContent="between" className="mt-2 gap-2">
+                    <Text className="text-xs">{allowance.used.toLocaleString()} used</Text>
+                    <Text className={`text-xs ${exhausted ? "text-cp-danger" : ""}`}>
+                      {allowance.remaining?.toLocaleString()} remaining
+                    </Text>
+                  </Flex>
+                  {overLimit ? (
+                    <Text className="mt-1 text-xs text-cp-danger">
+                      Usage is {(allowance.used - allowance.limit).toLocaleString()} over the current limit.
+                    </Text>
+                  ) : null}
+                </>
+              )}
+              <Text className="mt-2 text-xs text-tremor-content-subtle">
+                {allowance.window === "BILLING_PERIOD"
+                  ? `Billing period${allowance.windowEndsAt ? ` · resets ${formatDate(allowance.windowEndsAt)}` : ""}`
+                  : allowance.window === "LIFETIME" ? "Lifetime allowance" : "No plan limit"}
+              </Text>
+            </div>
+          );
+        })}
+      </div>
+
+      <Divider className="my-4" />
+      <Grid numItemsLg={2} className="gap-5">
+        <CampaignList title="Active campaigns" campaigns={monitor.active} total={monitor.counts.ACTIVE} />
+        <CampaignList title="Upcoming campaigns" campaigns={monitor.scheduled} total={monitor.counts.SCHEDULED} />
+      </Grid>
+    </Card>
+  );
+}
+
 function TagsCard({
   shop,
   tags,
@@ -669,10 +906,97 @@ function AuditTrailCard({ audit }: { readonly audit: readonly AuditEntry[] }) {
  * accumulate as the operator clicks "Load older"; a stable cursor (the source seq) walks
  * backwards so a mid-stream ingest can't skip or duplicate rows.
  */
+function eventIdentity(event: ActivityEvent): string {
+  return `${event.name}:${event.category}:${JSON.stringify(event.properties)}`;
+}
+
+/** Build approximate sessions from the newest-first bounded feed, then show each journey forward. */
+function buildJourneySessions(events: readonly ActivityEvent[]): JourneySession[] {
+  const groups: ActivityEvent[][] = [];
+  let current: ActivityEvent[] = [];
+  for (const event of events) {
+    const previous = current[current.length - 1];
+    const gap = previous ? Date.parse(previous.occurredAt) - Date.parse(event.occurredAt) : 0;
+    if (previous && gap > ACTIVITY_SESSION_GAP_MS) {
+      groups.push(current);
+      current = [];
+    }
+    current.push(event);
+  }
+  if (current.length > 0) groups.push(current);
+
+  return groups.map((newestFirst) => {
+    const chronological = [...newestFirst].reverse();
+    const steps: JourneyStep[] = [];
+    for (const event of chronological) {
+      const last = steps[steps.length - 1];
+      if (last && eventIdentity(last.event) === eventIdentity(event)) {
+        steps[steps.length - 1] = { event: last.event, count: last.count + 1 };
+      } else {
+        steps.push({ event, count: 1 });
+      }
+    }
+    return {
+      id: chronological[0]!.id,
+      startedAt: chronological[0]!.occurredAt,
+      endedAt: chronological[chronological.length - 1]!.occurredAt,
+      steps,
+    };
+  });
+}
+
+function routeLabel(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const parts = (value.split("?")[0] ?? value).split("/").filter(Boolean);
+  const appIndex = parts.indexOf("app");
+  const useful = appIndex >= 0 ? parts.slice(appIndex + 1) : parts;
+  if (useful.length === 0) return "Home";
+  return useful
+    .filter((part) => !/^[a-z0-9]{16,}$/i.test(part))
+    .map((part) => part.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()))
+    .join(" › ") || "Campaign details";
+}
+
+function eventPresentation(event: ActivityEvent): {
+  readonly label: string;
+  readonly detail: string;
+  readonly tone: "blue" | "emerald" | "amber" | "gray";
+  readonly Icon: typeof Circle;
+} {
+  const props = event.properties;
+  switch (event.name) {
+    case "page_viewed":
+      return { label: routeLabel(props?.route) ?? "Page viewed", detail: "Navigation", tone: "blue", Icon: Eye };
+    case "wizard_completed":
+      return { label: "Campaign wizard completed", detail: formatEventProps(props), tone: "emerald", Icon: WandSparkles };
+    case "campaign_activated":
+      return { label: "Campaign activated", detail: formatEventProps(props), tone: "emerald", Icon: Check };
+    case "campaign_completed":
+      return { label: "Campaign completed", detail: formatEventProps(props), tone: "emerald", Icon: Flag };
+    case "entitlement_denied":
+      return { label: "Pro feature blocked", detail: formatEventProps(props), tone: "amber", Icon: Ban };
+    default:
+      return {
+        label: event.name.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        detail: formatEventProps(props), tone: "gray", Icon: Circle,
+      };
+  }
+}
+
+function formatSessionRange(startedAt: string, endedAt: string): string {
+  const start = new Date(startedAt);
+  const end = new Date(endedAt);
+  const date = start.toLocaleDateString();
+  const startTime = start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const endTime = end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return startTime === endTime ? `${date} · ${startTime}` : `${date} · ${startTime}–${endTime}`;
+}
+
 function ActivityTab({ shop }: { readonly shop: string }) {
   const [pages, setPages] = useState<ActivityEvent[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loadedInitial, setLoadedInitial] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
   // `enabled: false` so we control fetching explicitly (initial load + each "load older").
   // The query key carries `before: cursor`, so a refetch always pulls the next older page.
   const q = trpc.usage.activity.useQuery(
@@ -740,35 +1064,85 @@ function ActivityTab({ shop }: { readonly shop: string }) {
   }
 
   const hasMore = cursor !== null;
+  const sessions = buildJourneySessions(pages);
   return (
     <Card aria-label="Activity">
-      <Flex justifyContent="between" alignItems="baseline">
-        <Title>Activity</Title>
-        <Text className="text-xs text-tremor-content-subtle">Newest first · from the CP mirror</Text>
+      <Flex justifyContent="between" alignItems="start" className="gap-4">
+        <div>
+          <Title>Activity journey</Title>
+          <Text className="mt-1 text-xs text-tremor-content-subtle">
+            Sessions are approximated from 30-minute inactivity gaps · newest session first
+          </Text>
+        </div>
+        <Button size="xs" variant="secondary" type="button" onClick={() => setShowRaw((value) => !value)}>
+          {showRaw ? "Show journey" : "Show raw events"}
+        </Button>
       </Flex>
-      <List className="mt-3" aria-label="Recent usage events">
-        {pages.map((e) => (
-          <ListItem key={e.id} className="flex-col items-start">
-            <Flex justifyContent="between" alignItems="baseline" className="w-full gap-2">
-              <div className="flex items-center gap-2">
-                <code className="text-xs">{e.name}</code>
-                {e.impersonated ? (
-                  <Badge color="amber" aria-label="Impersonated event">
-                    Impersonated
-                  </Badge>
-                ) : null}
-              </div>
+      {showRaw ? (
+        <List className="mt-4" aria-label="Raw usage events">
+          {pages.map((e) => (
+            <ListItem key={e.id} className="flex-col items-start">
+              <Flex justifyContent="between" alignItems="baseline" className="w-full gap-2">
+                <div className="flex items-center gap-2">
+                  <code className="text-xs">{e.name}</code>
+                  {e.impersonated ? <Badge color="amber">Impersonated</Badge> : null}
+                </div>
+                <Text className="text-xs text-tremor-content-subtle"><time dateTime={e.occurredAt}>{formatTimestamp(e.occurredAt)}</time></Text>
+              </Flex>
               <Text className="text-xs text-tremor-content-subtle">
-                <time dateTime={e.occurredAt}>{formatTimestamp(e.occurredAt)}</time>
+                {e.category}{formatEventProps(e.properties) ? ` · ${formatEventProps(e.properties)}` : ""}
               </Text>
-            </Flex>
-            <Text className="text-xs text-tremor-content-subtle">
-              {e.category}
-              {formatEventProps(e.properties) ? ` · ${formatEventProps(e.properties)}` : ""}
-            </Text>
-          </ListItem>
-        ))}
-      </List>
+            </ListItem>
+          ))}
+        </List>
+      ) : (
+        <div className="mt-5 space-y-5" aria-label="Usage journey sessions">
+          {sessions.map((session, sessionIndex) => (
+            <section key={session.id} className="rounded-lg border border-tremor-border p-4 dark:border-dark-tremor-border">
+              <Flex justifyContent="between" alignItems="baseline" className="gap-3">
+                <Text className="font-medium text-tremor-content-strong dark:text-dark-tremor-content-strong">
+                  {sessionIndex === 0 ? "Latest session" : "Earlier session"}
+                </Text>
+                <Text className="text-xs text-tremor-content-subtle">{formatSessionRange(session.startedAt, session.endedAt)}</Text>
+              </Flex>
+              <ol className="mt-4" aria-label={`Session starting ${formatTimestamp(session.startedAt)}`}>
+                {session.steps.map(({ event, count }, index) => {
+                  const presentation = eventPresentation(event);
+                  const Icon = presentation.Icon;
+                  const isLast = index === session.steps.length - 1;
+                  const toneClasses = {
+                    blue: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+                    emerald: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+                    amber: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+                    gray: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+                  }[presentation.tone];
+                  return (
+                    <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">
+                      {!isLast ? <span className="absolute left-[13px] top-7 h-[calc(100%-1rem)] w-px bg-tremor-border dark:bg-dark-tremor-border" aria-hidden="true" /> : null}
+                      <span className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${toneClasses}`}>
+                        <Icon size={14} aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <Flex justifyContent="between" alignItems="baseline" className="gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Text className="font-medium text-tremor-content-strong dark:text-dark-tremor-content-strong">{presentation.label}</Text>
+                            {count > 1 ? <Badge color="gray">×{count}</Badge> : null}
+                            {event.impersonated ? <Badge color="amber">Impersonated</Badge> : null}
+                          </div>
+                          <Text className="shrink-0 text-xs text-tremor-content-subtle">
+                            <time dateTime={event.occurredAt}>{new Date(event.occurredAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time>
+                          </Text>
+                        </Flex>
+                        {presentation.detail ? <Text className="mt-0.5 text-xs text-tremor-content-subtle">{presentation.detail}</Text> : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ))}
+        </div>
+      )}
       {hasMore ? (
         <div className="mt-3">
           <Button
@@ -891,6 +1265,7 @@ export default function MerchantDetail() {
               <ShopInfoCard shop={shop} detail={detail} />
               <HealthCard shop={shop} />
               <BillingCard shop={shop} />
+              <CampaignMonitorCard shop={shop} />
               <TagsCard
                 shop={shop}
                 tags={detail.tags}

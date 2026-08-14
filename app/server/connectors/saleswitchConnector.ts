@@ -5,6 +5,7 @@ import type {
   GuardedAction,
   Kpi,
   MerchantDetail,
+  MerchantCampaignMonitor,
   MerchantPage,
   MerchantQuery,
   SubscriptionState,
@@ -48,6 +49,7 @@ export interface ReplicaReadSource {
   readonly isReplicaOnly: boolean;
   queryShops(q: MerchantQuery): Promise<{ rows: RawShopRow[]; total: number }>;
   findShop(shop: string): Promise<RawShopRow | null>;
+  getCampaignMonitor?(shop: string): Promise<MerchantCampaignMonitor | null>;
   countByStatus(): Promise<Record<string, number>>;
   countByPlan(): Promise<Record<string, number>>;
   installsSince(since: Date): Promise<number>;
@@ -135,6 +137,10 @@ export class SaleSwitchConnector implements AppConnector {
       shopifyAdminUrl: `https://admin.shopify.com/store/${r.shopDomain.replace(".myshopify.com", "")}`,
       asOf: new Date().toISOString(),
     };
+  }
+
+  async getCampaignMonitor(shop: string): Promise<MerchantCampaignMonitor | null> {
+    return this.source.getCampaignMonitor?.(shop) ?? null;
   }
 
   async getSubscription(shop: string): Promise<SubscriptionState> {

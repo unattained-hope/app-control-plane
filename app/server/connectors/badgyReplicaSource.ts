@@ -1,5 +1,11 @@
 import pg from "pg";
-import type { MerchantQuery } from "./types.js";
+import type {
+  CampaignMonitorStatus,
+  MerchantAllowanceUsage,
+  MerchantCampaignMonitor,
+  MerchantCampaignSummary,
+  MerchantQuery,
+} from "./types.js";
 import type { RawShopRow, ReplicaReadSource } from "./saleswitchConnector.js";
 
 const { Pool } = pg;
@@ -11,6 +17,9 @@ interface ShopRow {
   status: string;
   plan_name: string | null;
   plan_key: string;
+  subscription_id: string | null;
+  subscription_status: string | null;
+  subscription_current_period_end: Date | null;
   installed_at: Date | null;
   uninstalled_at: Date | null;
   created_at: Date;
@@ -49,11 +58,161 @@ const SHOP_SELECT = `
     status,
     plan_name,
     plan_key,
+    subscription_id,
+    subscription_status,
+    subscription_current_period_end,
     installed_at,
     uninstalled_at,
     created_at
   FROM shops
 `;
+
+export interface CampaignMonitorCampaignRow {
+  id: string;
+  name: string;
+  status: string;
+  type: string;
+  start_at: Date | null;
+  end_at: Date | null;
+  recurrence_rule: unknown | null;
+  product_count: number | null;
+}
+
+export interface CampaignMonitorUsageBucketRow {
+  metric: string;
+  window_key: string;
+  used: string | number | bigint;
+}
+
+const MONITORED_STATUSES: readonly CampaignMonitorStatus[] = [
+  "DRAFT",
+  "SCHEDULED",
+  "ACTIVE",
+  "PAUSED",
+  "COMPLETED",
+  "REVERTED",
+  "EARLY_REVERTED",
+  "UNINSTALL_ORPHANED",
+];
+const LIST_LIMIT = 10;
+
+function emptyCounts(): Record<CampaignMonitorStatus, number> {
+  return Object.fromEntries(MONITORED_STATUSES.map((status) => [status, 0])) as Record<
+    CampaignMonitorStatus,
+    number
+  >;
+}
+
+function campaignSummary(row: CampaignMonitorCampaignRow): MerchantCampaignSummary | null {
+  if (!MONITORED_STATUSES.includes(row.status as CampaignMonitorStatus)) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    status: row.status as CampaignMonitorStatus,
+    type: row.type,
+    startAt: row.start_at?.toISOString() ?? null,
+    endAt: row.end_at?.toISOString() ?? null,
+    recurring: row.type === "RECURRING" || row.recurrence_rule !== null,
+    productCount: row.product_count,
+  };
+}
+
+function finiteAllowance(
+  metric: MerchantAllowanceUsage["metric"],
+  used: number,
+  limit: number,
+  window: "LIFETIME" | "BILLING_PERIOD",
+  windowEndsAt: string | null = null,
+): MerchantAllowanceUsage {
+  return { metric, used, limit, remaining: Math.max(0, limit - used), window, windowEndsAt };
+}
+
+function unlimitedAllowance(
+  metric: MerchantAllowanceUsage["metric"],
+  used: number,
+): MerchantAllowanceUsage {
+  return { metric, used, limit: null, remaining: null, window: "UNLIMITED", windowEndsAt: null };
+}
+
+export interface CampaignMonitorSourceData {
+  readonly planKey: string;
+  readonly subscriptionId: string | null;
+  readonly subscriptionStatus: string | null;
+  readonly subscriptionCurrentPeriodEnd: Date | null;
+  readonly campaigns: readonly CampaignMonitorCampaignRow[];
+  readonly buckets: readonly CampaignMonitorUsageBucketRow[];
+}
+
+/** Pure SaleSwitch-schema mapper; exported so quota/status behavior is invariant-tested. */
+export function buildMerchantCampaignMonitor(
+  shop: string,
+  data: CampaignMonitorSourceData,
+  asOf = new Date().toISOString(),
+): MerchantCampaignMonitor {
+  const summaries = data.campaigns
+    .map(campaignSummary)
+    .filter((row): row is MerchantCampaignSummary => row !== null);
+  const counts = emptyCounts();
+  for (const campaign of summaries) counts[campaign.status] += 1;
+
+  const time = (value: string | null): number => value ? Date.parse(value) : Number.POSITIVE_INFINITY;
+  const active = summaries
+    .filter((campaign) => campaign.status === "ACTIVE")
+    .sort((a, b) => time(a.startAt) - time(b.startAt))
+    .slice(0, LIST_LIMIT);
+  const scheduledAll = summaries
+    .filter((campaign) => campaign.status === "SCHEDULED")
+    .sort((a, b) => time(a.startAt) - time(b.startAt));
+
+  const used = (metric: string, windowKey: string): number => {
+    const row = data.buckets.find(
+      (bucket) => bucket.metric === metric && bucket.window_key === windowKey,
+    );
+    return Number(row?.used ?? 0);
+  };
+  const plan = data.planKey.toUpperCase();
+  const lifetime = "lifetime";
+  const periodKey = `billing:${data.subscriptionId ?? "unknown"}:${
+    data.subscriptionCurrentPeriodEnd?.toISOString() ?? "unconfirmed"
+  }`;
+  const lifetimeCampaigns = used("CAMPAIGN_LAUNCH", lifetime);
+  const lifetimeProducts = used("PRODUCT_VARIANT_UPDATE", lifetime);
+  const periodProducts = used("PRODUCT_VARIANT_UPDATE", periodKey);
+  const aiCredits = used("AI_CREDIT", lifetime);
+  const allowances: MerchantAllowanceUsage[] = [
+    plan === "FREE"
+      ? finiteAllowance("CAMPAIGN_LAUNCH", lifetimeCampaigns, 10, "LIFETIME")
+      : unlimitedAllowance("CAMPAIGN_LAUNCH", lifetimeCampaigns),
+    plan === "FREE"
+      ? finiteAllowance("PRODUCT_VARIANT_UPDATE", lifetimeProducts, 10_000, "LIFETIME")
+      : plan === "ESSENTIAL"
+        ? finiteAllowance(
+            "PRODUCT_VARIANT_UPDATE",
+            periodProducts,
+            10_000,
+            "BILLING_PERIOD",
+            data.subscriptionCurrentPeriodEnd?.toISOString() ?? null,
+          )
+        : unlimitedAllowance("PRODUCT_VARIANT_UPDATE", lifetimeProducts),
+    plan === "FREE"
+      ? finiteAllowance("AI_CREDIT", aiCredits, 10, "LIFETIME")
+      : unlimitedAllowance("AI_CREDIT", aiCredits),
+  ];
+
+  return {
+    shop,
+    plan,
+    billingSuspended: plan !== "FREE" && data.subscriptionStatus === "FROZEN",
+    total: summaries.length,
+    counts,
+    active,
+    scheduled: scheduledAll.slice(0, LIST_LIMIT),
+    nextScheduledAt: scheduledAll[0]?.startAt ?? null,
+    allowances,
+    listLimit: LIST_LIMIT,
+    asOf,
+  };
+}
 
 /**
  * Read-only SaleSwitch merchant source backed by Badgy's Postgres (local dev).
@@ -108,6 +267,39 @@ export function makeBadgyReplicaSource(connectionString: string): ReplicaReadSou
       ]);
       const row = result.rows[0];
       return row ? toRaw(row) : null;
+    },
+
+    async getCampaignMonitor(shop: string): Promise<MerchantCampaignMonitor | null> {
+      const shopResult = await pool.query<ShopRow>(`${SHOP_SELECT} WHERE shop_domain = $1 LIMIT 1`, [
+        shop,
+      ]);
+      const shopRow = shopResult.rows[0];
+      if (!shopRow) return null;
+
+      const [campaignResult, bucketResult] = await Promise.all([
+        pool.query<CampaignMonitorCampaignRow>(
+          `SELECT id, name, status, type, start_at, end_at, recurrence_rule, product_count
+             FROM campaigns
+            WHERE shop_domain = $1 AND deleted_at IS NULL
+            ORDER BY updated_at DESC`,
+          [shop],
+        ),
+        pool.query<CampaignMonitorUsageBucketRow>(
+          `SELECT metric, window_key, used
+             FROM entitlement_usage_buckets
+            WHERE shop_domain = $1`,
+          [shop],
+        ),
+      ]);
+
+      return buildMerchantCampaignMonitor(shop, {
+        planKey: shopRow.plan_key,
+        subscriptionId: shopRow.subscription_id,
+        subscriptionStatus: shopRow.subscription_status,
+        subscriptionCurrentPeriodEnd: shopRow.subscription_current_period_end,
+        campaigns: campaignResult.rows,
+        buckets: bucketResult.rows,
+      });
     },
 
     async countByStatus() {

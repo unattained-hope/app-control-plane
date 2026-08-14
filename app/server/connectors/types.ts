@@ -53,6 +53,55 @@ export interface MerchantDetail {
   readonly asOf: string; // ISO replica read time
 }
 
+export type CampaignMonitorStatus =
+  | "DRAFT"
+  | "SCHEDULED"
+  | "ACTIVE"
+  | "PAUSED"
+  | "COMPLETED"
+  | "REVERTED"
+  | "EARLY_REVERTED"
+  | "UNINSTALL_ORPHANED";
+
+export interface MerchantCampaignSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly status: CampaignMonitorStatus;
+  readonly type: string;
+  readonly startAt: string | null;
+  readonly endAt: string | null;
+  readonly recurring: boolean;
+  readonly productCount: number | null;
+}
+
+export type MerchantAllowanceMetric =
+  | "CAMPAIGN_LAUNCH"
+  | "PRODUCT_VARIANT_UPDATE"
+  | "AI_CREDIT";
+
+export interface MerchantAllowanceUsage {
+  readonly metric: MerchantAllowanceMetric;
+  readonly used: number;
+  readonly limit: number | null;
+  readonly remaining: number | null;
+  readonly window: "LIFETIME" | "BILLING_PERIOD" | "UNLIMITED";
+  readonly windowEndsAt: string | null;
+}
+
+export interface MerchantCampaignMonitor {
+  readonly shop: string;
+  readonly plan: string;
+  readonly billingSuspended: boolean;
+  readonly total: number;
+  readonly counts: Readonly<Record<CampaignMonitorStatus, number>>;
+  readonly active: readonly MerchantCampaignSummary[];
+  readonly scheduled: readonly MerchantCampaignSummary[];
+  readonly nextScheduledAt: string | null;
+  readonly allowances: readonly MerchantAllowanceUsage[];
+  readonly listLimit: number;
+  readonly asOf: string;
+}
+
 export type SubscriptionStatus = "active" | "trial" | "cancelled" | "none";
 
 export interface SubscriptionState {
@@ -118,6 +167,8 @@ export interface AppConnector {
   readonly key: string; // "saleswitch"
   listMerchants(q: MerchantQuery): Promise<MerchantPage>;
   getMerchant(shop: string): Promise<MerchantDetail | null>;
+  /** Optional app-specific live campaign/quota read for the merchant 360 view. */
+  getCampaignMonitor?(shop: string): Promise<MerchantCampaignMonitor | null>;
   getSubscription(shop: string): Promise<SubscriptionState>;
   computeKpis(): Promise<Kpi[]>;
   readonly actions: readonly GuardedAction[];

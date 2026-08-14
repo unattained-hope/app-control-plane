@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, requireAbility } from "../core.js";
 import { getMerchantService } from "../../services/merchantService.js";
+import { getConnector } from "../../connectors/registry.js";
 
 const MerchantQueryInput = z.object({
   search: z.string().optional(),
@@ -27,4 +28,15 @@ export const directoryRouter = router({
   overview: requireAbility("view")
     .input(z.object({ shop: z.string().min(1) }))
     .query(({ ctx, input }) => getMerchantService().overview(ctx.appKey, input.shop)),
+
+  campaignMonitor: requireAbility("view")
+    .input(z.object({ shop: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const connector = await getConnector(ctx.appKey);
+      if (!connector.getCampaignMonitor) return { supported: false as const, monitor: null };
+      return {
+        supported: true as const,
+        monitor: await connector.getCampaignMonitor(input.shop),
+      };
+    }),
 });
