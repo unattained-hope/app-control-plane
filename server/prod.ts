@@ -16,7 +16,7 @@ import express from "express";
 import { createRequestHandler } from "@react-router/express";
 import { attachChatGateway } from "~/server/realtime/chatGateway.js";
 import { initObservability } from "~/lib/observability.js";
-import { startKpiWorker } from "~/server/workers/kpiRollup.js";
+import { scheduleKpiRollup, startKpiWorker } from "~/server/workers/kpiRollup.js";
 import { startWebhookWorker } from "~/server/workers/webhookProcess.js";
 import {
   scheduleComplianceSweep,
@@ -73,6 +73,9 @@ const httpServer = createServer(app);
 attachChatGateway(httpServer);
 
 startKpiWorker();
+scheduleKpiRollup("saleswitch").catch((err: unknown) => {
+  console.error("Failed to schedule KPI rollup:", err);
+});
 startWebhookWorker();
 
 startComplianceSweepWorker();

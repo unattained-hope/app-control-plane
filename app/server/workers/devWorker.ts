@@ -5,7 +5,7 @@
  * server: `npm run worker`.
  */
 import { initObservability } from "~/lib/observability.js";
-import { startKpiWorker } from "./kpiRollup.js";
+import { scheduleKpiRollup, startKpiWorker } from "./kpiRollup.js";
 import { startWebhookWorker } from "./webhookProcess.js";
 import {
   scheduleComplianceSweep,
@@ -33,6 +33,7 @@ import {
 
 initObservability("worker");
 startKpiWorker();
+void scheduleKpiRollup("saleswitch");
 startWebhookWorker();
 startComplianceSweepWorker();
 void scheduleComplianceSweep("saleswitch");
@@ -55,5 +56,5 @@ void scheduleUsageDigest("saleswitch");
 
 // eslint-disable-next-line no-console
 console.log(
-  "[dev-worker] KPI + webhook workers running; compliance + SLA + ops + growth rollups + usage ingest + usage rollups/cohort/alert-eval + weekly digest scheduled.",
+  "[dev-worker] KPI + webhook workers running; KPI + compliance + SLA + ops + growth rollups + usage ingest + usage rollups/cohort/alert-eval + weekly digest scheduled.",
 );

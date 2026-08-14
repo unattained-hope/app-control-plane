@@ -37,7 +37,7 @@ export async function scheduleKpiRollup(
   cron = "*/15 * * * *",
 ): Promise<void> {
   const queue = makeKpiQueue();
-  const opts: JobsOptions = {
+  const recurringOpts: JobsOptions = {
     repeat: { pattern: cron },
     jobId: `kpi-rollup-${appKey}`,
     removeOnComplete: 100,
@@ -45,7 +45,21 @@ export async function scheduleKpiRollup(
     attempts: 3,
     backoff: { type: "exponential", delay: 5_000 },
   };
-  await queue.add(KPI_JOB_NAME, { appKey }, opts);
+  await queue.add(KPI_JOB_NAME, { appKey }, recurringOpts);
+
+  // A repeatable cron job only becomes due on its next boundary. Prime the
+  // dashboard on process startup as well so a new install/deployment does not
+  // leave every KPI card empty for up to one full interval.
+  await queue.add(
+    KPI_JOB_NAME,
+    { appKey },
+    {
+      removeOnComplete: 100,
+      removeOnFail: 500,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5_000 },
+    },
+  );
 }
 
 /** Start the worker (called from the persistent process / worker entry). */
