@@ -281,6 +281,9 @@ model Conversation {
   assignedTo         String? // AdminUser id (rule-driven or manual assign)
   subject            String?
   unreadCount        Int        @default(0)
+  // Pinning system: pinned conversations appear at the top of the inbox.
+  pinned             Boolean    @default(false)
+  pinnedAt           DateTime?
   // Priority-keyed SLA (cp-inbox-sla). `NONE` ⇒ null due-times ⇒ never swept.
   priority           Priority   @default(NONE)
   slaState           SlaState   @default(ON_TRACK)
@@ -298,6 +301,7 @@ model Conversation {
   tags     ConversationTag[]
 
   @@index([appKey, status, lastMessageAt])
+  @@index([appKey, pinned, lastMessageAt])
   @@index([appKey, slaState, firstResponseDueAt])
   @@index([shop])
   @@map("conversations")

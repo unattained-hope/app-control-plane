@@ -1,6 +1,7 @@
 import type { ConvStatus, Prisma, Priority, SenderType, SlaState } from "@prisma/client";
 import { getDb } from "../db.js";
 import { getRoutingService } from "./routingService.js";
+import { getAuditService } from "./auditService.js";
 
 /** Upper bound on inbox-search page size (server-paginated; no full-list loads). */
 const MAX_SEARCH_PAGE_SIZE = 50;
@@ -29,6 +30,8 @@ export interface ConversationListRow {
   readonly shop: string;
   readonly status: ConvStatus;
   readonly assignedTo: string | null;
+  readonly pinned: boolean;
+  readonly pinnedAt: string | null;
   readonly priority: Priority;
   readonly slaState: SlaState;
   readonly firstReplyAt: string | null;
@@ -135,6 +138,7 @@ export class ConversationService {
     conversationId: string,
     agentUserId: string,
     body: string,
+    attachmentUrl?: string | null,
   ): Promise<PersistedMessage> {
     return this.persistMessage({
       conversationId,
@@ -142,6 +146,7 @@ export class ConversationService {
       senderId: agentUserId,
       body,
       internal: true,
+      attachmentUrl: attachmentUrl ?? null,
     });
   }
 
@@ -167,14 +172,18 @@ export class ConversationService {
     return rows.map(toPersisted);
   }
 
-  /** Agent inbox listing, filterable by status. */
+  /** Agent inbox listing, filterable by status (pinned first, then most recent lastMessageAt). */
   async listConversations(
     appKey: string,
     status?: ConvStatus,
   ): Promise<ConversationListRow[]> {
     const rows = await this.db.conversation.findMany({
       where: { appKey, ...(status ? { status } : {}) },
-      orderBy: { lastMessageAt: "desc" },
+      orderBy: [
+        { pinned: "desc" },
+        { lastMessageAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
     });
     return rows.map(toListRow);
   }
@@ -183,7 +192,11 @@ export class ConversationService {
   async listForShop(appKey: string, shop: string): Promise<ConversationListRow[]> {
     const rows = await this.db.conversation.findMany({
       where: { appKey, shop },
-      orderBy: { lastMessageAt: "desc" },
+      orderBy: [
+        { pinned: "desc" },
+        { lastMessageAt: { sort: "desc", nulls: "last" } },
+        { createdAt: "desc" },
+      ],
       take: 100,
     });
     return rows.map(toListRow);
@@ -191,8 +204,8 @@ export class ConversationService {
 
   /**
    * Server-side inbox search (cp-conversation-csat): matches a term against shop,
-   * subject, conversation tag labels, and message body. Server-paginated + capped
-   * (no client-side filtering of a full list). `truncated` signals more pages exist.
+   * subject, conversation tag labels, and message body. Pinned conversations appear first,
+   * then sorted by lastMessageAt descending (recency).
    */
   async search(
     appKey: string,
@@ -223,7 +236,11 @@ export class ConversationService {
       this.db.conversation.count({ where }),
       this.db.conversation.findMany({
         where,
-        orderBy: { lastMessageAt: "desc" },
+        orderBy: [
+          { pinned: "desc" },
+          { lastMessageAt: { sort: "desc", nulls: "last" } },
+          { createdAt: "desc" },
+        ],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -245,6 +262,103 @@ export class ConversationService {
     });
   }
 
+  /** Update conversation lifecycle status (OPEN, SNOOZED, CLOSED) with audit log. */
+  async setStatus(
+    actor: {
+      actorUserId: string;
+      actorEmail?: string | null;
+      appKey: string;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
+    conversationId: string,
+    status: ConvStatus,
+  ): Promise<ConversationListRow> {
+    const current = await this.db.conversation.findUnique({
+      where: { id: conversationId },
+    });
+    if (!current) {
+      throw new Error("Conversation not found");
+    }
+    if (current.status === status) {
+      return toListRow(current);
+    }
+    const beforeStatus = current.status;
+    const updated = await this.db.$transaction(async (tx) => {
+      const convo = await tx.conversation.update({
+        where: { id: conversationId },
+        data: { status },
+      });
+      await getAuditService().append(
+        {
+          actorUserId: actor.actorUserId,
+          actorEmail: actor.actorEmail ?? null,
+          appKey: actor.appKey,
+          merchantShop: current.shop,
+          action: "conversation.status.update",
+          target: conversationId,
+          before: { status: beforeStatus },
+          after: { status },
+          ip: actor.ip ?? null,
+          userAgent: actor.userAgent ?? null,
+        },
+        tx,
+      );
+      return convo;
+    });
+    return toListRow(updated);
+  }
+
+  /** Toggle pin state for a conversation with audit log. */
+  async setPinned(
+    actor: {
+      actorUserId: string;
+      actorEmail?: string | null;
+      appKey: string;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
+    conversationId: string,
+    pinned: boolean,
+  ): Promise<ConversationListRow> {
+    const current = await this.db.conversation.findUnique({
+      where: { id: conversationId },
+    });
+    if (!current) {
+      throw new Error("Conversation not found");
+    }
+    const beforePinned = Boolean(current.pinned);
+    if (beforePinned === pinned) {
+      return toListRow(current);
+    }
+    const updated = await this.db.$transaction(async (tx) => {
+      const convo = await tx.conversation.update({
+        where: { id: conversationId },
+        data: {
+          pinned,
+          pinnedAt: pinned ? new Date() : null,
+        },
+      });
+      await getAuditService().append(
+        {
+          actorUserId: actor.actorUserId,
+          actorEmail: actor.actorEmail ?? null,
+          appKey: actor.appKey,
+          merchantShop: current.shop,
+          action: "conversation.pin.update",
+          target: conversationId,
+          before: { pinned: beforePinned },
+          after: { pinned },
+          ip: actor.ip ?? null,
+          userAgent: actor.userAgent ?? null,
+        },
+        tx,
+      );
+      return convo;
+    });
+    return toListRow(updated);
+  }
+
   /** Sum unread merchant messages across open conversations (nav badge). */
   async unreadTotal(appKey: string): Promise<number> {
     const rows = await this.db.conversation.findMany({
@@ -260,6 +374,8 @@ function toListRow(c: {
   shop: string;
   status: ConvStatus;
   assignedTo: string | null;
+  pinned?: boolean;
+  pinnedAt?: Date | null;
   priority: Priority;
   slaState: SlaState;
   firstReplyAt: Date | null;
@@ -274,6 +390,8 @@ function toListRow(c: {
     shop: c.shop,
     status: c.status,
     assignedTo: c.assignedTo,
+    pinned: Boolean(c.pinned),
+    pinnedAt: c.pinnedAt ? c.pinnedAt.toISOString() : null,
     priority: c.priority,
     slaState: c.slaState,
     firstReplyAt: c.firstReplyAt ? c.firstReplyAt.toISOString() : null,

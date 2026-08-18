@@ -77,20 +77,24 @@ export function attachChatGateway(httpServer: HttpServer): Server {
       presence.agentConnected(auth.userId);
       socket.on("disconnect", () => presence.agentDisconnected(auth.userId));
 
-      socket.on("agent:reply", async (payload: { conversationId: string; body: string }) => {
-        // Reply authorization: ADMIN/SUPPORT only (AC7 reply-role; VIEWER blocked).
-        if (auth.role === "VIEWER") {
-          socket.emit("error:forbidden", { reason: "VIEWER cannot reply" });
-          return;
-        }
-        const msg = await conversations.persistMessage({
-          conversationId: payload.conversationId,
-          senderType: "AGENT",
-          senderId: auth.userId,
-          body: payload.body,
-        });
-        io.to(roomFor(payload.conversationId)).emit("message", msg);
-      });
+      socket.on(
+        "agent:reply",
+        async (payload: { conversationId: string; body: string; attachmentUrl?: string | null }) => {
+          // Reply authorization: ADMIN/SUPPORT only (AC7 reply-role; VIEWER blocked).
+          if (auth.role === "VIEWER") {
+            socket.emit("error:forbidden", { reason: "VIEWER cannot reply" });
+            return;
+          }
+          const msg = await conversations.persistMessage({
+            conversationId: payload.conversationId,
+            senderType: "AGENT",
+            senderId: auth.userId,
+            body: payload.body,
+            attachmentUrl: payload.attachmentUrl ?? null,
+          });
+          io.to(roomFor(payload.conversationId)).emit("message", msg);
+        },
+      );
 
       socket.on(
         "agent:typing",

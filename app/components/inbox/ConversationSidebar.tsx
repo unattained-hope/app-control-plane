@@ -1,10 +1,85 @@
 import { useState } from "react";
 import type { Role } from "@prisma/client";
 import { Badge, Button, Select, SelectItem, Text, TextInput } from "@tremor/react";
+import { ExternalLink, ShieldCheck } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
 import type { Conversation, Priority } from "./types.js";
-import { PRIORITIES, formatPriorityLabel } from "./format.js";
+import { PRIORITIES, STATUSES, STATUS_LABEL, formatPriorityLabel } from "./format.js";
 import { canCompose } from "./ConversationComposer.js";
+
+function Merchant360Card({ shop }: { readonly shop: string }) {
+  return (
+    <div className="apoaap-inbox-sidebar-section">
+      <div className="flex items-center justify-between mb-2">
+        <span className="apoaap-inbox-sidebar-label">Merchant Overview</span>
+        <a
+          href={`https://${shop}`}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-xs text-cp-accent hover:underline flex items-center gap-1"
+          title="Open storefront"
+        >
+          Store <ExternalLink size={11} />
+        </a>
+      </div>
+      <div className="p-3 rounded-lg bg-cp-surface-2 border border-cp-border space-y-2 text-xs">
+        <div className="flex justify-between items-center">
+          <span className="text-cp-text-muted">Account Health</span>
+          <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20 flex items-center gap-1">
+            <ShieldCheck size={11} /> HEALTHY
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-cp-text-muted">Active App</span>
+          <span className="font-semibold text-cp-text font-mono">SaleSwitch / Badgy</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-cp-text-muted">Store Domain</span>
+          <span className="text-cp-text truncate max-w-[130px] font-mono text-[11px]" title={shop}>
+            {shop}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusSelect({
+  conversation,
+  onChanged,
+}: {
+  readonly conversation: Conversation;
+  readonly onChanged: () => void;
+}) {
+  const setStatus = trpc.chat.setStatus.useMutation({ onSuccess: onChanged });
+  return (
+    <div className="apoaap-inbox-sidebar-section">
+      <label htmlFor="inbox-status" className="apoaap-inbox-sidebar-label">
+        Status
+      </label>
+      <Select
+        id="inbox-status"
+        value={conversation.status}
+        onValueChange={(v) =>
+          setStatus.mutate({ conversationId: conversation.id, status: v as Conversation["status"] })
+        }
+        aria-label="Set conversation status"
+        enableClear={false}
+      >
+        {STATUSES.map((s) => (
+          <SelectItem key={s} value={s}>
+            {STATUS_LABEL[s]}
+          </SelectItem>
+        ))}
+      </Select>
+      {setStatus.isError ? (
+        <Text className="apoaap-inbox-sidebar-error" role="alert">
+          {setStatus.error.message}
+        </Text>
+      ) : null}
+    </div>
+  );
+}
 
 function PrioritySelect({
   conversation,
@@ -67,7 +142,7 @@ function ConversationTags({
       <span className="apoaap-inbox-sidebar-label">Tags</span>
       <div className="apoaap-inbox-tags">
         {tags.length === 0 ? (
-          <Text className="text-xs text-tremor-content">No tags.</Text>
+          <Text className="text-xs text-cp-text-subtle">No tags.</Text>
         ) : (
           tags.map((t) => (
             <Badge key={t} aria-label={`Tag ${t}`}>
@@ -122,7 +197,7 @@ function CannedReplyPicker({
     <div className="apoaap-inbox-sidebar-section" aria-label="Canned replies">
       <span className="apoaap-inbox-sidebar-label">Canned replies</span>
       {replies.length === 0 ? (
-        <Text className="text-xs text-tremor-content">No canned replies yet.</Text>
+        <Text className="text-xs text-cp-text-subtle">No canned replies yet.</Text>
       ) : (
         <div className="apoaap-inbox-canned-buttons">
           {replies.map((r) => (
@@ -158,7 +233,7 @@ function AssignControl({
   return (
     <div className="apoaap-inbox-sidebar-section" aria-label="Assignment">
       <span className="apoaap-inbox-sidebar-label">Assignment</span>
-      <Text className="text-xs text-tremor-content">
+      <Text className="text-xs text-cp-text-muted">
         {conversation.assignedTo ? `Assigned to ${conversation.assignedTo}` : "Unassigned"}
       </Text>
       {!isAssignedToMe ? (
@@ -174,7 +249,7 @@ function AssignControl({
           Assign to me
         </Button>
       ) : (
-        <Text className="mt-1 text-xs text-tremor-content-subtle">You are assigned</Text>
+        <Text className="mt-1 text-xs text-cp-accent font-semibold">You are assigned</Text>
       )}
       {assign.isError ? (
         <Text className="apoaap-inbox-sidebar-error" role="alert">
@@ -202,17 +277,19 @@ export function ConversationSidebar({
 
   return (
     <aside className="apoaap-inbox-sidebar" aria-label="Conversation tools">
-      <span className="apoaap-inbox-sidebar-heading">Triage</span>
+      <span className="apoaap-inbox-sidebar-heading">Triage & Context</span>
 
       {composeAllowed ? (
         <>
+          <Merchant360Card shop={conversation.shop} />
+          <StatusSelect conversation={conversation} onChanged={onChanged} />
           <PrioritySelect conversation={conversation} onChanged={onChanged} />
           <ConversationTags conversationId={conversation.id} />
           <CannedReplyPicker shop={conversation.shop} onInsert={onInsertCanned} />
           <AssignControl conversation={conversation} userId={userId} onChanged={onChanged} />
         </>
       ) : (
-        <Text className="text-xs text-tremor-content">
+        <Text className="text-xs text-cp-text-muted">
           View-only — triage controls are hidden for your role.
         </Text>
       )}

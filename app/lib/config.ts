@@ -158,6 +158,10 @@ const EnvSchema = z.object({
    */
   BADGE_GRAPHIC_PUBLIC_BASE_URL: z.string().default(""),
 
+  // Support chat attachments
+  CHAT_ATTACHMENT_STORAGE_DIR: z.string().default("./data/chat-attachments"),
+  CHAT_ATTACHMENT_MAX_BYTES: z.coerce.number().int().positive().default(15 * 1024 * 1024),
+
   // --- Usage-event ingestion (usage-analytics Phase 2b) ---
 
   // Base URL of the SaleSwitch/Badgy internal API the usageIngest worker polls,

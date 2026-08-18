@@ -21,7 +21,7 @@ export interface AgentChatSocketValue {
   readonly replyError: string | null;
   readonly clearReplyError: () => void;
   readonly joinConversation: (conversationId: string | null) => void;
-  readonly sendReply: (conversationId: string, body: string) => void;
+  readonly sendReply: (conversationId: string, body: string, attachmentUrl?: string | null) => void;
   readonly setTyping: (conversationId: string, typing: boolean) => void;
 }
 
@@ -114,14 +114,21 @@ export function AgentChatSocketProvider({
     [utils],
   );
 
-  const sendReply = useCallback((conversationId: string, body: string) => {
-    if (!socketRef.current?.connected) {
-      setReplyError("Not connected to chat server — try refreshing the page");
-      return;
-    }
-    setReplyError(null);
-    socketRef.current.emit("agent:reply", { conversationId, body });
-  }, []);
+  const sendReply = useCallback(
+    (conversationId: string, body: string, attachmentUrl?: string | null) => {
+      if (!socketRef.current?.connected) {
+        setReplyError("Not connected to chat server — try refreshing the page");
+        return;
+      }
+      setReplyError(null);
+      socketRef.current.emit("agent:reply", {
+        conversationId,
+        body,
+        attachmentUrl: attachmentUrl ?? null,
+      });
+    },
+    [],
+  );
 
   const setTyping = useCallback((conversationId: string, typing: boolean) => {
     if (!socketRef.current?.connected) return;

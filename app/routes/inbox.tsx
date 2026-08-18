@@ -49,6 +49,13 @@ export default function Inbox() {
     void utils.chat.unreadTotal.invalidate();
   };
 
+  const togglePin = trpc.chat.togglePin.useMutation({
+    onSuccess: () => {
+      void utils.chat.search.invalidate();
+      void utils.chat.conversations.invalidate();
+    },
+  });
+
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setDraft("");
@@ -87,6 +94,7 @@ export default function Inbox() {
           errorMessage={searchQuery.error?.message}
           selectedId={selectedId}
           onSelect={handleSelect}
+          onTogglePin={(id, pinned) => togglePin.mutate({ conversationId: id, pinned })}
         />
 
         {selected ? (

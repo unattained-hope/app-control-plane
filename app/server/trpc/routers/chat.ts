@@ -79,14 +79,39 @@ export const chatRouter = router({
         .catch(mapNotFound),
     ),
 
+  /** Set conversation status (OPEN, SNOOZED, CLOSED). */
+  setStatus: requireAbility("reply")
+    .input(z.object({ conversationId: z.string(), status: z.enum(["OPEN", "SNOOZED", "CLOSED"]) }))
+    .mutation(({ ctx, input }) =>
+      getConversationService()
+        .setStatus(actorCtx(ctx), input.conversationId, input.status)
+        .catch(mapNotFound),
+    ),
+
+  /** Pin or unpin a conversation (highest priority in inbox sorting). */
+  togglePin: requireAbility("reply")
+    .input(z.object({ conversationId: z.string(), pinned: z.boolean() }))
+    .mutation(({ ctx, input }) =>
+      getConversationService()
+        .setPinned(actorCtx(ctx), input.conversationId, input.pinned)
+        .catch(mapNotFound),
+    ),
+
   /** Post an agent-only internal note (never delivered to the merchant). */
   postInternalNote: requireAbility("reply")
-    .input(z.object({ conversationId: z.string(), body: z.string().min(1) }))
+    .input(
+      z.object({
+        conversationId: z.string(),
+        body: z.string().min(1),
+        attachmentUrl: z.string().url().optional().nullable(),
+      }),
+    )
     .mutation(({ ctx, input }) =>
       getConversationService().postInternalNote(
         input.conversationId,
         ctx.identity.id,
         input.body,
+        input.attachmentUrl,
       ),
     ),
 

@@ -10,6 +10,8 @@ export interface Conversation {
   readonly shop: string;
   readonly status: ConversationStatus;
   readonly assignedTo: string | null;
+  readonly pinned: boolean;
+  readonly pinnedAt?: string | null;
   readonly priority: Priority;
   readonly slaState: SlaState;
   readonly firstReplyAt: string | null;

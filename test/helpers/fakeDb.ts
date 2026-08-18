@@ -753,6 +753,8 @@ export class FakeDb {
           assignedTo: null,
           subject: null,
           unreadCount: 0,
+          pinned: false,
+          pinnedAt: null,
           priority: "NONE",
           slaState: "ON_TRACK",
           firstReplyAt: null,
@@ -1061,23 +1063,32 @@ function conversationMatches(
   return true;
 }
 
-/** Sort rows by a single-key orderBy (nulls last), matching Prisma-ish ordering. */
+/** Sort rows by a single-key or multi-key orderBy (nulls last), matching Prisma-ish ordering. */
 function sortRows(
   rows: Row[],
-  orderBy?: Record<string, "asc" | "desc">,
+  orderBy?: Record<string, unknown> | Array<Record<string, unknown>>,
 ): Row[] {
   if (!orderBy) return [...rows];
-  const [key, dir] = Object.entries(orderBy)[0] ?? [];
-  if (!key) return [...rows];
+  const list = Array.isArray(orderBy) ? orderBy : [orderBy];
+  if (list.length === 0) return [...rows];
+
   return [...rows].sort((a, b) => {
-    const av = a[key];
-    const bv = b[key];
-    if (av == null && bv == null) return 0;
-    if (av == null) return 1;
-    if (bv == null) return -1;
-    const an = av instanceof Date ? av.getTime() : av;
-    const bn = bv instanceof Date ? bv.getTime() : bv;
-    const cmp = an < bn ? -1 : an > bn ? 1 : 0;
-    return dir === "desc" ? -cmp : cmp;
+    for (const order of list) {
+      const [key, dirVal] = Object.entries(order)[0] ?? [];
+      if (!key) continue;
+      const dir = typeof dirVal === "string" ? dirVal : (dirVal as { sort?: string })?.sort ?? "asc";
+      const av = a[key];
+      const bv = b[key];
+      if (av == null && bv == null) continue;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      const an = av instanceof Date ? av.getTime() : av;
+      const bn = bv instanceof Date ? bv.getTime() : bv;
+      const c = an < bn ? -1 : an > bn ? 1 : 0;
+      if (c !== 0) {
+        return dir === "desc" ? -c : c;
+      }
+    }
+    return 0;
   });
 }

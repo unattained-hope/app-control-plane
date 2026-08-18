@@ -13,5 +13,8 @@ test-results
 playwright-report
 .cache
 
-# Local uploaded badge graphic assets (cp-app-settings).
-data/badge-graphics/
+# Local uploaded badge graphic assets (cp-app-settings) & chat attachments.
+data/
+PROD_CONTEXT.md
+ui-pathways/
+.cursor/debug-*.log

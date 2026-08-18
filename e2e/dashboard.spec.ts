@@ -27,8 +27,8 @@ test("dashboard renders the KPI region with all MVP metric cards", async ({ page
     await expect(dash.getByText(label, { exact: true })).toBeVisible();
   }
 
-  // No rollup has run, so each KPI shows the explicit empty state, not a crash.
-  await expect(dash.getByText("No snapshot yet").first()).toBeVisible();
+  // If no rollup has run, KPIs show the empty state; if a rollup ran, KPIs show as-of freshness stamps.
+  await expect(dash.getByText(/No snapshot yet|as of/i).first()).toBeVisible();
   // It is snapshot-sourced — the page advertises no live joins.
   await expect(dash.getByText("Snapshot-sourced — no live joins")).toBeVisible();
 });

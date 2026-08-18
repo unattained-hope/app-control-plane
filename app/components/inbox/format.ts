@@ -7,6 +7,8 @@ export const STATUS_FILTERS: ReadonlyArray<{ readonly value: string; readonly la
   { value: "CLOSED", label: "Closed" },
 ];
 
+export const STATUSES: readonly ConversationStatus[] = ["OPEN", "SNOOZED", "CLOSED"];
+
 export const STATUS_LABEL: Readonly<Record<ConversationStatus, string>> = {
   OPEN: "Open",
   SNOOZED: "Snoozed",
