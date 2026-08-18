@@ -1,92 +1,115 @@
 /*
- * Filament-aligned design tokens (cp-visual-design).
+ * Control Plane Design Tokens (cp-visual-design).
  *
- * Palette matches Filament's default Color::Orange primary + Color::Gray surfaces:
- * - Light: white cards on gray-50, orange-600 actions/links
- * - Dark: gray-950/900 surfaces, orange-500/400 accents
+ * Supports Light mode (:root) and Dark mode (.dark).
  *
- * Values are Tailwind v3 hex equivalents from Filament\Support\Colors\Color.
- * Tailwind `cp.*` / `tremor.*` keys and `apoaap-*` CSS both read these variables.
+ * Light:
+ * - Canvas: #f9fafb (gray-50)
+ * - Surfaces: #ffffff (white) / #f3f4f6 (gray-100)
+ * - Borders: #e5e7eb (gray-200)
+ * - Text: #111827 (gray-900) / #4b5563 (gray-600)
+ * - Accent: #ea580c (orange-600) / #f97316 (orange-500)
+ *
+ * Dark:
+ * - Canvas: #050508 (Pure Obsidian)
+ * - Surfaces: #0E0E14 (Dark Charcoal Glass) / #161620 (Elevated Glass)
+ * - Borders: #22222E / rgba(245, 158, 11, 0.4)
+ * - Text: #FFFFFF / #A1A1AA (Zinc-400)
+ * - Accent: #F59E0B (Cyber Amber) / #FBBF24 (Amber Hover)
  */
 :root {
   color-scheme: light;
 
-  /* Surfaces — Filament gray + white */
-  --cp-bg: #f9fafb; /* gray-50 */
-  --cp-surface: #ffffff; /* white — cards, header, sidebar */
-  --cp-surface-2: #f3f4f6; /* gray-100 — table headers, panels */
-  --cp-border: #e5e7eb; /* gray-200 */
+  /* Surfaces — Light clean slate & white */
+  --cp-bg: #f9fafb;
+  --cp-surface: #ffffff;
+  --cp-surface-2: #f3f4f6;
+  --cp-surface-hover: rgba(0, 0, 0, 0.04);
+  --cp-surface-muted: rgba(0, 0, 0, 0.03);
+  --cp-border: #e5e7eb;
+  --cp-border-subtle: rgba(0, 0, 0, 0.06);
+  --cp-border-active: rgba(234, 88, 12, 0.4);
 
-  /* Text — gray scale */
-  --cp-text: #111827; /* gray-900 */
-  --cp-text-muted: #4b5563; /* gray-600 */
-  --cp-text-subtle: #9ca3af; /* gray-400 */
+  /* Text — Slate & charcoal scale */
+  --cp-text: #111827;
+  --cp-text-muted: #4b5563;
+  --cp-text-subtle: #9ca3af;
 
-  /* Primary — Filament Color::Orange */
-  --cp-accent: #ea580c; /* orange-600 — links, buttons, active nav */
-  --cp-accent-hover: #c2410c; /* orange-700 */
-  --cp-accent-bar: #f97316; /* orange-500 — focus ring */
-  --cp-accent-subtle: #fff7ed; /* orange-50 — active nav, row hover */
+  /* Primary — Amber / Orange */
+  --cp-accent: #ea580c;
+  --cp-accent-hover: #c2410c;
+  --cp-accent-bar: #f97316;
+  --cp-accent-subtle: #fff7ed;
+  --cp-accent-gradient: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
 
-  /* Semantic — Filament defaults (Emerald success, Rose danger, Orange warn) */
-  --cp-ok: #059669; /* emerald-600 */
-  --cp-warn: #ea580c; /* orange-600 */
-  --cp-danger: #e11d48; /* rose-600 */
+  /* Semantic */
+  --cp-ok: #059669;
+  --cp-warn: #ea580c;
+  --cp-danger: #e11d48;
 
-  /* Callouts — orange warning notes, emerald success */
-  --cp-note-bg: #fff7ed; /* orange-50 */
-  --cp-note-border: #fed7aa; /* orange-200 */
-  --cp-note-text: #9a3412; /* orange-800 */
-  --cp-note-text-muted: #c2410c; /* orange-700 */
-  --cp-success-bg: #ecfdf5; /* emerald-50 */
-  --cp-success-border: #a7f3d0; /* emerald-200 */
-  --cp-success-text: #065f46; /* emerald-800 */
+  /* Callouts — Internal Note & Success */
+  --cp-note-bg: #fffbeb;
+  --cp-note-border: #fde68a;
+  --cp-note-text: #92400e;
+  --cp-note-text-muted: #b45309;
+  --cp-success-bg: #ecfdf5;
+  --cp-success-border: #a7f3d0;
+  --cp-success-text: #065f46;
 
   /* Shape / depth / type */
   --cp-radius-sm: 0.5rem;
   --cp-radius: 0.75rem;
+  --cp-radius-lg: 1rem;
   --cp-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --cp-shadow-header: 0 1px 0 rgb(0 0 0 / 0.05);
-  --cp-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  --cp-shadow-elevated: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --cp-font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --cp-font-mono: "Geist Mono", "JetBrains Mono", monospace;
 
-  --cp-transition: 150ms ease;
+  --cp-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark {
   color-scheme: dark;
 
-  /* Surfaces — Filament dark (gray-950 canvas, gray-900 cards) */
-  --cp-bg: #030712; /* gray-950 */
-  --cp-surface: #111827; /* gray-900 */
-  --cp-surface-2: #1f2937; /* gray-800 */
-  --cp-border: #374151; /* gray-700 */
+  /* Surfaces — Obsidian Dark Charcoal */
+  --cp-bg: #050508;
+  --cp-surface: #0E0E14;
+  --cp-surface-2: #161620;
+  --cp-surface-hover: rgba(255, 255, 255, 0.05);
+  --cp-surface-muted: rgba(255, 255, 255, 0.03);
+  --cp-border: #22222E;
+  --cp-border-subtle: rgba(255, 255, 255, 0.07);
+  --cp-border-active: rgba(245, 158, 11, 0.4);
 
-  /* Text */
-  --cp-text: #f9fafb; /* gray-50 */
-  --cp-text-muted: #9ca3af; /* gray-400 */
-  --cp-text-subtle: #6b7280; /* gray-500 */
+  /* Text — Crisp White & Zinc */
+  --cp-text: #FFFFFF;
+  --cp-text-muted: #A1A1AA;
+  --cp-text-subtle: #71717A;
 
-  /* Primary — brighter orange on dark surfaces */
-  --cp-accent: #f97316; /* orange-500 */
-  --cp-accent-hover: #fb923c; /* orange-400 */
-  --cp-accent-bar: #f97316; /* orange-500 */
-  --cp-accent-subtle: rgb(249 115 22 / 0.12); /* orange-500 tint */
+  /* Primary — Cyber Amber */
+  --cp-accent: #F59E0B;
+  --cp-accent-hover: #FBBF24;
+  --cp-accent-bar: #F59E0B;
+  --cp-accent-subtle: rgba(245, 158, 11, 0.12);
+  --cp-accent-gradient: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
 
   /* Semantic */
-  --cp-ok: #34d399; /* emerald-400 */
-  --cp-warn: #fb923c; /* orange-400 */
-  --cp-danger: #fb7185; /* rose-400 */
+  --cp-ok: #10B981;
+  --cp-warn: #F59E0B;
+  --cp-danger: #F43F5E;
 
-  /* Callouts */
-  --cp-note-bg: rgb(249 115 22 / 0.1);
-  --cp-note-border: #9a3412; /* orange-800 */
-  --cp-note-text: #fed7aa; /* orange-200 */
-  --cp-note-text-muted: #fdba74; /* orange-300 */
-  --cp-success-bg: rgb(16 185 129 / 0.1);
-  --cp-success-border: #065f46; /* emerald-800 */
-  --cp-success-text: #6ee7b7; /* emerald-300 */
+  /* Callouts — Amber Internal Note */
+  --cp-note-bg: rgba(245, 158, 11, 0.08);
+  --cp-note-border: rgba(245, 158, 11, 0.28);
+  --cp-note-text: #FDE68A;
+  --cp-note-text-muted: #FCD34D;
+  --cp-success-bg: rgba(16, 185, 129, 0.1);
+  --cp-success-border: rgba(16, 185, 129, 0.3);
+  --cp-success-text: #6EE7B7;
 
-  --cp-shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.35);
-  --cp-shadow-header: 0 1px 0 rgb(0 0 0 / 0.25);
+  /* Shape / depth / type */
+  --cp-shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --cp-shadow-header: 0 1px 0 rgba(255, 255, 255, 0.08);
+  --cp-shadow-elevated: 0 12px 36px -4px rgba(0, 0, 0, 0.7);
 }

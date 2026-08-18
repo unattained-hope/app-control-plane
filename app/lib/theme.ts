@@ -39,4 +39,4 @@ export function applyTheme(preference: ThemePreference): void {
 }
 
 /** Blocking script injected in `<head>` to prevent a light flash before hydration. */
-export const THEME_INIT_SCRIPT = `(function(){try{var k="cp-theme";var t=localStorage.getItem(k);var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark");document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
+export const THEME_INIT_SCRIPT = `(function(){try{var k="cp-theme";var t=localStorage.getItem(k);var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d){document.documentElement.classList.add("dark");}else{document.documentElement.classList.remove("dark");}document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();`;

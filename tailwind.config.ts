@@ -69,6 +69,31 @@ export default {
             inverted: "var(--cp-surface)",
           },
         },
+        "dark-tremor": {
+          brand: {
+            faint: "var(--cp-accent-subtle)",
+            muted: "var(--cp-accent-subtle)",
+            subtle: "var(--cp-accent)",
+            DEFAULT: "var(--cp-accent)",
+            emphasis: "var(--cp-accent-hover)",
+            inverted: "var(--cp-surface)",
+          },
+          background: {
+            muted: "var(--cp-bg)",
+            subtle: "var(--cp-surface-2)",
+            DEFAULT: "var(--cp-surface)",
+            emphasis: "var(--cp-text-muted)",
+          },
+          border: { DEFAULT: "var(--cp-border)" },
+          ring: { DEFAULT: "var(--cp-border)" },
+          content: {
+            subtle: "var(--cp-text-subtle)",
+            DEFAULT: "var(--cp-text-muted)",
+            emphasis: "var(--cp-text)",
+            strong: "var(--cp-text)",
+            inverted: "var(--cp-surface)",
+          },
+        },
       },
       borderRadius: {
         "tremor-small": "0.5rem",
@@ -85,7 +110,7 @@ export default {
   },
   safelist: [
     // Tremor dynamic classes that the content scanner can miss.
-    { pattern: /^(bg|text|border|ring)-(tremor|cp)-/ },
+    { pattern: /^(bg|text|border|ring)-(tremor|dark-tremor|cp)-/ },
   ],
   plugins: [],
 } satisfies Config;

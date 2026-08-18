@@ -52,10 +52,12 @@
 @layer components {
   /* ── App shell ──────────────────────────────────────────────────────── */
   .apoaap-shell {
+    height: 100vh;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     background: var(--cp-bg);
+    overflow: hidden;
   }
   .apoaap-shell-header {
     display: flex;
@@ -69,6 +71,7 @@
     position: sticky;
     top: 0;
     z-index: 10;
+    flex-shrink: 0;
   }
   .apoaap-shell-header-actions {
     display: flex;
@@ -104,6 +107,7 @@
     display: flex;
     flex: 1;
     min-height: 0;
+    overflow: hidden;
   }
   .apoaap-shell-nav {
     width: 13.5rem;
@@ -111,6 +115,7 @@
     padding: 1rem 0.75rem;
     background: var(--cp-surface);
     border-right: 1px solid var(--cp-border);
+    overflow-y: auto;
   }
   .apoaap-shell-nav ul {
     list-style: none;
@@ -123,6 +128,7 @@
   .apoaap-shell-main {
     flex: 1;
     min-width: 0;
+    height: 100%;
     overflow: auto;
     background: var(--cp-bg);
   }
@@ -654,33 +660,40 @@
     border-radius: var(--cp-radius-sm);
   }
 
-  /* ── Agent inbox (3-column) ─────────────────────────────────────────── */
+  /* ── Agent inbox (3-column Linear Glass + Obsidian & Amber) ────────── */
   .apoaap-inbox-page {
     display: flex;
     flex-direction: column;
-    min-height: calc(100vh - 3.5rem);
-    padding: 1.25rem 1.5rem;
+    height: 100%;
+    max-height: 100%;
+    padding: 1rem 1.25rem;
+    background: var(--cp-bg);
+    overflow: hidden;
   }
   .apoaap-inbox-page-header {
-    margin-bottom: 1rem;
+    flex-shrink: 0;
+    margin-bottom: 0.75rem;
     gap: 0.75rem;
   }
   .apoaap-inbox-grid {
     display: grid;
     flex: 1;
     min-height: 0;
+    height: 100%;
     gap: 0;
-    grid-template-columns: 17.5rem minmax(0, 1fr) 18.75rem;
+    grid-template-columns: 20rem minmax(0, 1fr) 20rem;
     border: 1px solid var(--cp-border);
-    border-radius: var(--cp-radius);
+    border-radius: var(--cp-radius-lg);
     overflow: hidden;
     background: var(--cp-surface);
+    box-shadow: var(--cp-shadow-card);
   }
   .apoaap-inbox-list,
   .apoaap-inbox-sidebar {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    height: 100%;
     padding: 1rem;
     background: var(--cp-surface);
     overflow: hidden;
@@ -693,27 +706,67 @@
     overflow-y: auto;
   }
   .apoaap-inbox-list-heading {
-    font-size: 0.95rem !important;
-    margin-bottom: 0.75rem;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: var(--cp-text) !important;
   }
-  .apoaap-inbox-list-search,
-  .apoaap-inbox-list-filter {
-    margin-bottom: 0.75rem;
+  .apoaap-inbox-list-search {
+    margin-bottom: 0.5rem;
   }
   .apoaap-inbox-search-input {
     width: 100%;
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-sm);
-    background: var(--cp-bg);
+    background: var(--cp-surface-2);
     color: var(--cp-text);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8125rem;
+    transition: border-color var(--cp-transition), box-shadow var(--cp-transition);
+  }
+  .apoaap-inbox-search-input:focus {
+    border-color: var(--cp-accent);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--cp-accent-subtle);
   }
   .apoaap-inbox-search-input::placeholder {
-    color: var(--cp-text-muted);
+    color: var(--cp-text-subtle);
   }
+
+  /* Segmented Pill Tabs for Inbox */
+  .apoaap-inbox-pill-tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    margin-bottom: 0.75rem;
+  }
+  .apoaap-inbox-pill-tab {
+    flex: 1;
+    text-align: center;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--cp-text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-inbox-pill-tab:hover {
+    color: var(--cp-text);
+  }
+  .apoaap-inbox-pill-tab.is-active {
+    background: var(--cp-accent-subtle);
+    color: var(--cp-accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
   .apoaap-inbox-list-divider {
-    margin: 0.5rem 0 0.75rem;
+    margin: 0 0 0.75rem;
+    border-color: var(--cp-border) !important;
   }
   .apoaap-inbox-list-items {
     list-style: none;
@@ -731,17 +784,55 @@
     text-align: left;
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-sm);
-    background: var(--cp-bg);
+    background: var(--cp-surface-2);
     padding: 0.625rem 0.75rem;
     cursor: pointer;
-    transition: background-color var(--cp-transition), border-color var(--cp-transition);
+    transition: transform var(--cp-transition), background-color var(--cp-transition), border-color var(--cp-transition), box-shadow var(--cp-transition);
   }
   .apoaap-inbox-list-item:hover {
-    background: var(--cp-surface-muted, var(--cp-bg));
+    transform: translateY(-1px);
+    border-color: var(--cp-border-active);
+    background: var(--cp-surface-hover);
   }
   .apoaap-inbox-list-item.is-selected {
     border-color: var(--cp-accent);
-    background: color-mix(in srgb, var(--cp-accent) 8%, var(--cp-bg));
+    background: var(--cp-accent-subtle);
+    box-shadow: 0 4px 14px -2px var(--cp-accent-subtle);
+  }
+  .apoaap-inbox-pin-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cp-warn);
+  }
+  .apoaap-inbox-item-pin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem;
+    border-radius: 0.25rem;
+    background: transparent;
+    border: none;
+    color: var(--cp-text-subtle);
+    cursor: pointer;
+    opacity: 0;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-inbox-list-item:hover .apoaap-inbox-item-pin-btn,
+  .apoaap-inbox-item-pin-btn.is-pinned {
+    opacity: 1;
+  }
+  .apoaap-inbox-item-pin-btn:hover {
+    color: var(--cp-accent);
+    background: var(--cp-surface-hover);
+  }
+  .apoaap-inbox-item-pin-btn.is-pinned {
+    color: var(--cp-warn);
+  }
+  .apoaap-inbox-header-btn.is-pinned {
+    background: var(--cp-accent-subtle);
+    border-color: var(--cp-accent);
+    color: var(--cp-accent);
   }
   .apoaap-inbox-list-item-top {
     display: flex;
@@ -751,13 +842,13 @@
     min-width: 0;
   }
   .apoaap-inbox-shop-title {
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--cp-text);
     margin: 0;
   }
   .apoaap-inbox-shop-title.is-sm {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
   }
   .apoaap-inbox-shop-domain {
     font-size: 0.7rem;
@@ -773,7 +864,7 @@
   }
   .apoaap-inbox-list-time {
     font-size: 0.7rem;
-    color: var(--cp-text-muted);
+    color: var(--cp-text-subtle);
     flex-shrink: 0;
   }
   .apoaap-inbox-list-assigned {
@@ -799,13 +890,14 @@
     flex-shrink: 0;
   }
   .apoaap-inbox-status-dot.is-open {
-    background: #10b981;
+    background: var(--cp-ok);
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
   }
   .apoaap-inbox-status-dot.is-snoozed {
-    background: #f59e0b;
+    background: var(--cp-warn);
   }
   .apoaap-inbox-status-dot.is-closed {
-    background: #9ca3af;
+    background: var(--cp-text-subtle);
   }
   .apoaap-inbox-sla-chips {
     display: flex;
@@ -826,13 +918,17 @@
   }
   .apoaap-inbox-thread-header {
     flex-shrink: 0;
-    padding: 1rem 1.25rem;
+    padding: 0.875rem 1.25rem;
     border-bottom: 1px solid var(--cp-border);
     background: var(--cp-surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
   }
   .apoaap-inbox-thread-title {
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 700;
     margin: 0;
     color: var(--cp-text);
   }
@@ -846,11 +942,10 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
   }
   .apoaap-inbox-csat {
-    margin-top: 0.5rem;
-    padding: 0.375rem 0.625rem;
+    padding: 0.25rem 0.5rem;
     border: 1px solid var(--cp-success-border);
     background: var(--cp-success-bg);
     border-radius: var(--cp-radius-sm);
@@ -881,36 +976,77 @@
   .apoaap-inbox-date-divider span {
     font-size: 0.7rem;
     font-weight: 500;
-    color: var(--cp-text-muted);
-    background: var(--cp-bg);
+    color: var(--cp-text-subtle);
+    background: var(--cp-surface-2);
     padding: 0.125rem 0.625rem;
     border-radius: 9999px;
     border: 1px solid var(--cp-border);
   }
   .apoaap-inbox-bubble {
-    max-width: 78%;
+    max-width: 80%;
     padding: 0.625rem 0.875rem;
     border-radius: 1rem;
     border: 1px solid var(--cp-border);
     list-style: none;
+    animation: fadeInSlide 0.25s var(--cp-transition) forwards;
+  }
+  @keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   .apoaap-inbox-bubble.is-merchant {
     align-self: flex-start;
-    background: var(--cp-surface);
+    background: var(--cp-surface-2);
     border-bottom-left-radius: 0.25rem;
+    border-color: var(--cp-border);
   }
   .apoaap-inbox-bubble.is-agent {
     align-self: flex-end;
-    background: color-mix(in srgb, var(--cp-accent) 12%, var(--cp-surface));
-    border-color: color-mix(in srgb, var(--cp-accent) 35%, var(--cp-border));
+    background: color-mix(in srgb, var(--cp-accent) 15%, var(--cp-surface));
+    border-color: var(--cp-border-active);
     border-bottom-right-radius: 0.25rem;
+    box-shadow: 0 2px 8px -2px var(--cp-accent-subtle);
   }
-  .apoaap-inbox-bubble.is-system {
+  /* ── System Messages (Discrete, Compact, Centered) ───────────────────── */
+  .apoaap-inbox-system-msg {
     align-self: center;
-    max-width: 90%;
-    background: var(--cp-surface-muted, var(--cp-bg));
-    font-style: italic;
+    max-width: 85%;
+    display: flex;
+    justify-content: center;
+    list-style: none;
+    margin: 0.25rem 0;
+    animation: fadeInSlide 0.2s var(--cp-transition) forwards;
+  }
+  .apoaap-inbox-system-bubble {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.15rem;
+    padding: 0.35rem 0.75rem;
     border-radius: var(--cp-radius-sm);
+    background: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+    font-size: 0.75rem;
+    color: var(--cp-text-muted);
+  }
+  .apoaap-inbox-system-body {
+    font-size: 0.75rem !important;
+    line-height: 1.35;
+    color: var(--cp-text-muted) !important;
+    word-break: break-word;
+  }
+  .apoaap-inbox-system-body p {
+    margin: 0.1rem 0;
+  }
+  .apoaap-inbox-system-body strong {
+    color: var(--cp-text);
+    font-weight: 600;
+  }
+  .apoaap-inbox-system-time {
+    font-size: 0.625rem;
+    color: var(--cp-text-subtle);
+    font-weight: 400;
   }
   .apoaap-inbox-bubble-header,
   .apoaap-inbox-note-header {
@@ -936,7 +1072,7 @@
   }
   .apoaap-inbox-bubble-time {
     font-size: 0.65rem;
-    color: var(--cp-text-muted);
+    color: var(--cp-text-subtle);
     flex-shrink: 0;
   }
   .apoaap-inbox-bubble-body {
@@ -958,6 +1094,7 @@
     background: var(--cp-note-bg);
     border-radius: var(--cp-radius-sm);
     list-style: none;
+    animation: fadeInSlide 0.25s var(--cp-transition) forwards;
   }
   .apoaap-inbox-note-body {
     margin: 0.25rem 0 0;
@@ -969,38 +1106,349 @@
     height: 1px;
     list-style: none;
   }
-  .apoaap-inbox-composer {
-    flex-shrink: 0;
-    padding: 0.875rem 1.25rem 1rem;
-    border-top: 1px solid var(--cp-border);
-    background: var(--cp-surface);
-  }
-  .apoaap-inbox-composer-readonly {
-    color: var(--cp-text-muted);
-  }
-  .apoaap-inbox-composer-tabs {
-    display: flex;
-    gap: 0.25rem;
-    margin-bottom: 0.625rem;
-  }
-  .apoaap-inbox-composer-tabs button {
+  /* ── Inbox Header Action Buttons ────────────────────────────────────── */
+  .apoaap-inbox-header-btn {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--cp-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    background: var(--cp-surface-2);
     border: 1px solid var(--cp-border);
+    color: var(--cp-text);
+    cursor: pointer;
+    line-height: 1.2;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-inbox-header-btn:hover:not(:disabled) {
+    background: var(--cp-accent-subtle);
+    border-color: var(--cp-accent);
+    color: var(--cp-accent);
+  }
+  .apoaap-inbox-header-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ── Floating Composer Card ─────────────────────────────────────────── */
+  .apoaap-inbox-composer-wrapper {
+    flex-shrink: 0;
+    padding: 0 1rem 1rem 1rem;
     background: var(--cp-bg);
+  }
+  .apoaap-inbox-composer-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    background: var(--cp-surface);
+    box-shadow: var(--cp-shadow-card);
+    padding: 0.625rem 0.875rem;
+    position: relative;
+    transition: border-color var(--cp-transition), box-shadow var(--cp-transition), background-color var(--cp-transition);
+  }
+  .apoaap-inbox-composer-card:focus-within {
+    border-color: var(--cp-border-active);
+    box-shadow: 0 0 0 1px var(--cp-border-active), var(--cp-shadow-card);
+  }
+  .apoaap-inbox-composer-card.is-dragover {
+    border-color: var(--cp-accent);
+    background: var(--cp-accent-subtle);
+  }
+
+  .apoaap-composer-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .apoaap-composer-mode-pills {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    background: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+  }
+  .apoaap-composer-mode-pill {
+    padding: 0.25rem 0.65rem;
+    border: none;
+    border-radius: calc(var(--cp-radius-sm) - 2px);
+    background: transparent;
     color: var(--cp-text-muted);
     font-size: 0.75rem;
-    font-weight: 500;
-    padding: 0.3rem 0.75rem;
-    border-radius: var(--cp-radius-sm);
+    font-weight: 600;
     cursor: pointer;
-    transition: background-color var(--cp-transition), color var(--cp-transition), border-color var(--cp-transition);
+    transition: all var(--cp-transition);
   }
-  .apoaap-inbox-composer-tabs button.is-active {
-    background: color-mix(in srgb, var(--cp-accent) 10%, var(--cp-bg));
-    border-color: var(--cp-accent);
+  .apoaap-composer-mode-pill:hover {
     color: var(--cp-text);
   }
-  .apoaap-inbox-composer-actions {
-    margin-top: 0.5rem;
+  .apoaap-composer-mode-pill.is-active {
+    background: var(--cp-accent);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  .apoaap-composer-mode-pill.is-active.is-note {
+    background: var(--cp-warn);
+    color: #ffffff;
+  }
+
+  .apoaap-composer-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .apoaap-composer-uploading {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--cp-accent);
+    margin-right: 0.5rem;
+  }
+  .apoaap-composer-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    padding: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    border: none;
+    color: var(--cp-text-muted);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-composer-action-btn:hover:not(:disabled) {
+    color: var(--cp-text);
+    background: var(--cp-surface-2);
+  }
+  .apoaap-composer-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .apoaap-composer-sep {
+    width: 1px;
+    height: 1rem;
+    background: var(--cp-border);
+    margin: 0 0.25rem;
+  }
+  .apoaap-composer-canned-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--cp-radius-sm);
+    font-size: 0.72rem;
+    font-family: var(--cp-font-mono);
+    font-weight: 600;
+    color: var(--cp-accent);
+    background: var(--cp-accent-subtle);
+    border: 1px solid var(--cp-border-active);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-composer-canned-btn:hover:not(:disabled) {
+    background: var(--cp-accent);
+    color: #ffffff;
+  }
+
+  .apoaap-composer-card-body {
+    position: relative;
+    margin: 0.25rem 0;
+  }
+  .apoaap-composer-textarea {
+    width: 100%;
+    min-height: 4.5rem;
+    background: transparent;
+    color: var(--cp-text);
+    border: none;
+    outline: none;
+    resize: vertical;
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    font-family: inherit;
+  }
+  .apoaap-composer-textarea::placeholder {
+    color: var(--cp-text-subtle);
+  }
+
+  .apoaap-composer-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.5rem;
+    border-radius: var(--cp-radius-sm);
+    background: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+    font-size: 0.75rem;
+    color: var(--cp-text);
+    width: fit-content;
+  }
+  .apoaap-composer-attachment-name {
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .apoaap-composer-attachment-size {
+    font-size: 0.7rem;
+    color: var(--cp-text-muted);
+  }
+  .apoaap-composer-attachment-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--cp-text-muted);
+    padding: 0;
+    display: flex;
+    align-items: center;
+  }
+  .apoaap-composer-attachment-remove:hover {
+    color: var(--cp-danger);
+  }
+
+  .apoaap-composer-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--cp-border);
+  }
+  .apoaap-composer-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .apoaap-composer-attach-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    padding: 0;
+    border-radius: 0.375rem;
+    background: transparent;
+    border: none;
+    color: var(--cp-text-muted);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-composer-attach-icon-btn:hover:not(:disabled) {
+    color: var(--cp-text);
+    background: var(--cp-surface-2);
+  }
+  .apoaap-composer-footer-hint {
+    font-size: 0.72rem;
+    color: var(--cp-text-subtle);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .apoaap-composer-split-send {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    flex-shrink: 0;
+  }
+  .apoaap-composer-send-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: var(--cp-radius-sm) 0 0 var(--cp-radius-sm);
+    background: var(--cp-accent);
+    color: #ffffff;
+    border: 1px solid var(--cp-accent);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-composer-send-btn:hover:not(:disabled) {
+    background: var(--cp-accent-hover);
+    border-color: var(--cp-accent-hover);
+  }
+  .apoaap-composer-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .apoaap-composer-send-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.45rem;
+    border-radius: 0 var(--cp-radius-sm) var(--cp-radius-sm) 0;
+    background: var(--cp-accent-hover);
+    color: #ffffff;
+    border: 1px solid var(--cp-accent-hover);
+    border-left: 1px solid rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-composer-send-arrow:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .apoaap-composer-send-menu {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    right: 0;
+    width: 14rem;
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    box-shadow: var(--cp-shadow-elevated);
+    z-index: 60;
+    padding: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+  .apoaap-composer-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    font-size: 0.75rem;
+    border-radius: calc(var(--cp-radius-sm) - 2px);
+    background: transparent;
+    border: none;
+    color: var(--cp-text);
+    text-align: left;
+    cursor: pointer;
+    transition: all var(--cp-transition);
+  }
+  .apoaap-composer-menu-item:hover,
+  .apoaap-composer-menu-item.is-selected {
+    background: var(--cp-accent-subtle);
+    color: var(--cp-accent);
+  }
+  .apoaap-composer-menu-shortcut {
+    font-size: 0.65rem;
+    color: var(--cp-text-muted);
+  }
+
+  .apoaap-inbox-composer-readonly {
+    margin: 0.75rem 1rem 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--cp-radius-sm);
+    background: var(--cp-surface-2);
+    border: 1px solid var(--cp-border);
+    color: var(--cp-text-muted);
   }
   .apoaap-inbox-composer-error {
     margin-top: 0.375rem !important;
@@ -1010,9 +1458,9 @@
   .apoaap-inbox-sidebar-heading {
     display: block;
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     color: var(--cp-text-muted);
     margin-bottom: 1rem;
   }
@@ -1297,7 +1745,7 @@
     border-radius: var(--cp-radius);
     border: 1px solid var(--cp-border);
     background: var(--cp-surface);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--cp-shadow-elevated);
   }
   .apoaap-modal--wide {
     width: min(100%, 36rem);
