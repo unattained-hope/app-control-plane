@@ -1,3 +1,4 @@
+import type { ElementType } from "react";
 import {
   NavLink,
   Outlet,
@@ -6,12 +7,25 @@ import {
   type LoaderFunctionArgs,
 } from "react-router";
 import type { Role } from "@prisma/client";
+import {
+  AlertTriangle,
+  BarChart3,
+  Flag,
+  Inbox,
+  LayoutDashboard,
+  Megaphone,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  Store,
+} from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
 import { resolveIdentity } from "~/server/auth.js";
 import { resolveDevIdentity } from "~/server/devSession.js";
 import { ThemeToggle } from "~/components/ThemeToggle.js";
 import { useAppContext } from "~/lib/appContext.js";
 import { AgentChatSocketProvider } from "~/lib/agentChatSocket.js";
+import { IncomingCallBanner } from "~/components/inbox/IncomingCallBanner.js";
 
 export interface ShellOutletContext {
   readonly role: Role;
@@ -94,31 +108,37 @@ export default function AppShell() {
       <div className="apoaap-shell-body">
         <nav className="apoaap-shell-nav" aria-label="Primary">
           <ul>
-            {navItems.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.end ?? false}
-                  className={({ isActive }) =>
-                    isActive
-                      ? "apoaap-nav-link is-active"
-                      : "apoaap-nav-link"
-                  }
-                >
-                  <span className="apoaap-nav-link-inner">
-                    <span>{item.label}</span>
-                    {item.to === "/inbox" && unreadTotal > 0 ? (
-                      <span
-                        className="apoaap-nav-badge"
-                        aria-label={`${unreadTotal} unread messages`}
-                      >
-                        {unreadTotal > 99 ? "99+" : unreadTotal}
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end ?? false}
+                    className={({ isActive }) =>
+                      isActive
+                        ? "apoaap-nav-link is-active"
+                        : "apoaap-nav-link"
+                    }
+                  >
+                    <span className="apoaap-nav-link-inner">
+                      <span className="flex items-center gap-2.5 min-w-0">
+                        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{item.label}</span>
                       </span>
-                    ) : null}
-                  </span>
-                </NavLink>
-              </li>
-            ))}
+                      {item.to === "/inbox" && unreadTotal > 0 ? (
+                        <span
+                          className="apoaap-nav-badge"
+                          aria-label={`${unreadTotal} unread messages`}
+                        >
+                          {unreadTotal > 99 ? "99+" : unreadTotal}
+                        </span>
+                      ) : null}
+                    </span>
+                  </NavLink>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
@@ -129,6 +149,7 @@ export default function AppShell() {
             appKey={appKey}
             agentName={agentName}
           >
+            <IncomingCallBanner />
             <Outlet
               context={{
                 role,
@@ -146,6 +167,7 @@ export default function AppShell() {
 interface NavItem {
   readonly to: string;
   readonly label: string;
+  readonly icon: ElementType;
   /** `end` matches the route exactly — used for the index ("/") route. */
   readonly end?: boolean;
   /** Only show to ADMIN (cosmetic; the route's procedures enforce server-side). */
@@ -155,19 +177,18 @@ interface NavItem {
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { to: "/", label: "Dashboard", end: true },
-  { to: "/merchants", label: "Merchants" },
-  { to: "/inbox", label: "Inbox" },
-  { to: "/routing-rules", label: "Routing", adminOnly: true },
-  { to: "/audit", label: "Audit" },
-  { to: "/compliance", label: "Compliance", adminOnly: true },
+  { to: "/", label: "Dashboard", end: true, icon: LayoutDashboard },
+  { to: "/merchants", label: "Merchants", icon: Store },
+  { to: "/inbox", label: "Inbox", icon: Inbox },
+  { to: "/audit", label: "Audit", icon: ScrollText },
+  { to: "/compliance", label: "Compliance", adminOnly: true, icon: ShieldCheck },
   // Tier 3 — growth & retention.
-  { to: "/at-risk", label: "At-risk" },
+  { to: "/at-risk", label: "At-risk", icon: AlertTriangle },
   // usage-analytics Phase 4 — module-gated on the app registry's "usage" module.
-  { to: "/usage", label: "Usage", module: "usage" },
-  { to: "/feature-flags", label: "Flags", adminOnly: true },
-  { to: "/announcements", label: "Announcements", adminOnly: true },
-  { to: "/settings", label: "Settings", adminOnly: true },
+  { to: "/usage", label: "Usage", module: "usage", icon: BarChart3 },
+  { to: "/feature-flags", label: "Flags", adminOnly: true, icon: Flag },
+  { to: "/announcements", label: "Announcements", adminOnly: true, icon: Megaphone },
+  { to: "/settings", label: "Settings", adminOnly: true, icon: Settings },
 ];
 
 /**

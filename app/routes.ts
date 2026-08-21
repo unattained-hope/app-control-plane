@@ -24,7 +24,15 @@ export default [
     "api/badge-graphics/assets/:appKey/:filename",
     "routes/api.badge-graphics.assets.$appKey.$filename.tsx",
   ),
+  route("api/chat/upload", "routes/api.chat.upload.tsx"),
+  route(
+    "api/chat/assets/:conversationId/:filename",
+    "routes/api.chat.assets.$conversationId.$filename.tsx",
+  ),
   route("api/self-serve-billing", "routes/api.self-serve-billing.tsx"),
+  // Dev-only merchant chat harness
+  route("dev-chat", "routes/dev-chat.tsx"),
+  route("dev-chat/panel", "routes/dev-chat.panel.tsx"),
   // Role cookie login (sets cp_dev_role). Staging sits behind Caddy Basic Auth.
   route("dev-login", "routes/dev-login.tsx"),
   layout("routes/_shell.tsx", [
@@ -32,7 +40,6 @@ export default [
     route("merchants", "routes/merchants.tsx"),
     route("merchants/:shop", "routes/merchant-detail.tsx"),
     route("inbox", "routes/inbox.tsx"),
-    route("routing-rules", "routes/routing-rules.tsx"),
     route("audit", "routes/audit.tsx"),
     route("compliance", "routes/compliance.tsx"),
     // Tier 2 — scale-readiness / ops resilience.

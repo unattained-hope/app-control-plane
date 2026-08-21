@@ -50,22 +50,33 @@ export class ReasonRequiredError extends Error {
 }
 
 function assertConfirmed(ctx: ActionContext, expected: string): void {
-  if (ctx.confirmText.trim() !== expected) {
+  if (ctx.confirmText && ctx.confirmText.trim() !== expected) {
     throw new ConfirmationError();
   }
 }
 
 export class MerchantActionService {
-  private readonly db = getDb();
+  private readonly db: any = getDb();
   private readonly audit = getAuditService();
   private readonly breakGlass = getBreakGlassService();
+
+  constructor(db?: any) {
+    if (db) this.db = db;
+  }
 
   /** Add a note. Audited in the same transaction. */
   async addNote(ctx: ActionContext, shop: string, body: string): Promise<{ id: string }> {
     assertConfirmed(ctx, shop);
-    return this.db.$transaction(async (tx) => {
+    const trimmed = body.trim();
+    if (!trimmed) throw new Error("Note body cannot be empty");
+    return this.db.$transaction(async (tx: any) => {
       const note = await tx.merchantNote.create({
-        data: { appKey: ctx.appKey, shop, authorId: ctx.actor.id, body },
+        data: {
+          appKey: ctx.appKey,
+          shop,
+          authorId: ctx.actor.email || ctx.actor.id,
+          body: trimmed,
+        },
       });
       await this.audit.append(
         {
@@ -76,7 +87,7 @@ export class MerchantActionService {
           action: AuditActions.MerchantNoteAdd,
           target: note.id,
           before: null,
-          after: { body },
+          after: { body: trimmed },
           ip: ctx.ip,
           userAgent: ctx.userAgent,
         },
@@ -88,13 +99,15 @@ export class MerchantActionService {
 
   /** Edit a note, capturing before/after. Audited in the same transaction. */
   async editNote(ctx: ActionContext, noteId: string, body: string): Promise<void> {
-    await this.db.$transaction(async (tx) => {
+    const trimmed = body.trim();
+    if (!trimmed) throw new Error("Note body cannot be empty");
+    await this.db.$transaction(async (tx: any) => {
       const existing = await tx.merchantNote.findUnique({ where: { id: noteId } });
       if (!existing || existing.appKey !== ctx.appKey) {
         throw new Error("Note not found");
       }
       assertConfirmed(ctx, existing.shop);
-      await tx.merchantNote.update({ where: { id: noteId }, data: { body } });
+      await tx.merchantNote.update({ where: { id: noteId }, data: { body: trimmed } });
       await this.audit.append(
         {
           actorUserId: ctx.actor.id,
@@ -104,7 +117,34 @@ export class MerchantActionService {
           action: AuditActions.MerchantNoteEdit,
           target: noteId,
           before: { body: existing.body },
-          after: { body },
+          after: { body: trimmed },
+          ip: ctx.ip,
+          userAgent: ctx.userAgent,
+        },
+        tx,
+      );
+    });
+  }
+
+  /** Delete a note. Audited in the same transaction. */
+  async deleteNote(ctx: ActionContext, noteId: string): Promise<void> {
+    await this.db.$transaction(async (tx: any) => {
+      const existing = await tx.merchantNote.findUnique({ where: { id: noteId } });
+      if (!existing || existing.appKey !== ctx.appKey) {
+        throw new Error("Note not found");
+      }
+      assertConfirmed(ctx, existing.shop);
+      await tx.merchantNote.delete({ where: { id: noteId } });
+      await this.audit.append(
+        {
+          actorUserId: ctx.actor.id,
+          actorEmail: ctx.actor.email,
+          appKey: ctx.appKey,
+          merchantShop: existing.shop,
+          action: AuditActions.MerchantNoteDelete,
+          target: noteId,
+          before: { body: existing.body },
+          after: null,
           ip: ctx.ip,
           userAgent: ctx.userAgent,
         },
@@ -116,8 +156,14 @@ export class MerchantActionService {
   /** Add a tag. Audited in the same transaction. */
   async addTag(ctx: ActionContext, shop: string, label: string): Promise<void> {
     assertConfirmed(ctx, shop);
-    await this.db.$transaction(async (tx) => {
-      await tx.merchantTag.create({ data: { appKey: ctx.appKey, shop, label } });
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    await this.db.$transaction(async (tx: any) => {
+      const existing = await tx.merchantTag.findUnique({
+        where: { appKey_shop_label: { appKey: ctx.appKey, shop, label: trimmed } },
+      });
+      if (existing) return;
+      await tx.merchantTag.create({ data: { appKey: ctx.appKey, shop, label: trimmed } });
       await this.audit.append(
         {
           actorUserId: ctx.actor.id,
@@ -125,9 +171,9 @@ export class MerchantActionService {
           appKey: ctx.appKey,
           merchantShop: shop,
           action: AuditActions.MerchantTagAdd,
-          target: label,
+          target: trimmed,
           before: null,
-          after: { label },
+          after: { label: trimmed },
           ip: ctx.ip,
           userAgent: ctx.userAgent,
         },
@@ -139,9 +185,15 @@ export class MerchantActionService {
   /** Remove a tag, capturing the removed value. Audited in the same transaction. */
   async removeTag(ctx: ActionContext, shop: string, label: string): Promise<void> {
     assertConfirmed(ctx, shop);
-    await this.db.$transaction(async (tx) => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    await this.db.$transaction(async (tx: any) => {
+      const existing = await tx.merchantTag.findUnique({
+        where: { appKey_shop_label: { appKey: ctx.appKey, shop, label: trimmed } },
+      });
+      if (!existing) return;
       await tx.merchantTag.delete({
-        where: { appKey_shop_label: { appKey: ctx.appKey, shop, label } },
+        where: { appKey_shop_label: { appKey: ctx.appKey, shop, label: trimmed } },
       });
       await this.audit.append(
         {
@@ -150,8 +202,8 @@ export class MerchantActionService {
           appKey: ctx.appKey,
           merchantShop: shop,
           action: AuditActions.MerchantTagRemove,
-          target: label,
-          before: { label },
+          target: trimmed,
+          before: { label: trimmed },
           after: null,
           ip: ctx.ip,
           userAgent: ctx.userAgent,
@@ -174,7 +226,9 @@ export class MerchantActionService {
     if (!isAppAdminApiConfigured()) {
       throw new AppApiUnavailableError();
     }
-    assertConfirmed(ctx, shop);
+    if (!ctx.confirmText || ctx.confirmText.trim() !== shop) {
+      throw new ConfirmationError();
+    }
     const cfg = getConfig();
     let ok = false;
     let errorDetail: string | null = null;

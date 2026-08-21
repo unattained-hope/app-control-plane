@@ -1,5 +1,6 @@
 import { Badge, Divider, Text, Title } from "@tremor/react";
 import { Pin, Search } from "lucide-react";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import type { Conversation, StatusFilter } from "./types.js";
 import {
   PRIORITY_TONE,
@@ -100,13 +101,16 @@ function ConversationListItem({
         className={selected ? "apoaap-inbox-list-item is-selected" : "apoaap-inbox-list-item"}
       >
         <div className="apoaap-inbox-list-item-top">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {conversation.pinned ? (
-              <span className="apoaap-inbox-pin-badge" title="Pinned conversation" aria-label="Pinned conversation">
-                <Pin size={11} className="fill-current text-amber-500 shrink-0" aria-hidden="true" />
-              </span>
-            ) : null}
-            <ShopHeading shop={conversation.shop} size="sm" />
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <StoreAvatar shop={conversation.shop} size="sm" />
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              {conversation.pinned ? (
+                <span className="apoaap-inbox-pin-badge" title="Pinned conversation" aria-label="Pinned conversation">
+                  <Pin size={11} className="fill-current text-amber-500 shrink-0" aria-hidden="true" />
+                </span>
+              ) : null}
+              <ShopHeading shop={conversation.shop} size="sm" />
+            </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {onTogglePin ? (

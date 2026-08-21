@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Card, Text, Title } from "@tremor/react";
+import { Settings } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
 import { useAppContext } from "~/lib/appContext.js";
 
@@ -17,7 +18,10 @@ export default function SettingsIndex() {
 
   return (
     <main className="apoaap-settings p-6" aria-label="App settings">
-      <Title>Settings</Title>
+      <Title className="flex items-center gap-2">
+        <Settings className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+        <span>Settings</span>
+      </Title>
       <Text className="mt-1 text-sm text-tremor-content-subtle">
         App-specific configuration for {app?.name ?? appKey}.
       </Text>

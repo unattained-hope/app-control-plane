@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, Text, Title, Badge, Button, TextInput } from "@tremor/react";
+import { Flag as FlagIcon } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
 import type { AppRouter } from "~/server/trpc/root.js";
@@ -36,7 +37,10 @@ export default function FeatureFlags() {
   if (isForbidden) {
     return (
       <main className="apoaap-flags p-6" aria-label="Feature flags">
-        <Title>Feature flags</Title>
+        <Title className="flex items-center gap-2">
+          <FlagIcon className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Feature flags</span>
+        </Title>
         <Card className="mt-4" role="alert" aria-label="Feature flags access denied">
           <Text className="font-medium">Admin access required</Text>
           <Text className="mt-1 text-xs text-tremor-content-subtle">
@@ -49,7 +53,10 @@ export default function FeatureFlags() {
 
   return (
     <main className="apoaap-flags p-6" aria-label="Feature flags">
-      <Title>Feature flags</Title>
+      <Title className="flex items-center gap-2">
+        <FlagIcon className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+        <span>Feature flags</span>
+      </Title>
 
       <Card className="mt-4">
         <form

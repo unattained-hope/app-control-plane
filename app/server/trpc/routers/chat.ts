@@ -4,7 +4,6 @@ import { TRPCError } from "@trpc/server";
 import { router, requireAbility } from "../core.js";
 import { getConversationService } from "../../services/conversationService.js";
 import { getSlaService } from "../../services/slaService.js";
-import { getRoutingService } from "../../services/routingService.js";
 import { getConversationTagService } from "../../services/conversationTagService.js";
 
 /**
@@ -65,7 +64,7 @@ export const chatRouter = router({
   assign: requireAbility("reply")
     .input(z.object({ conversationId: z.string(), agentUserId: z.string() }))
     .mutation(({ ctx, input }) =>
-      getRoutingService()
+      getConversationService()
         .assign(actorCtx(ctx), input.conversationId, input.agentUserId)
         .catch(mapNotFound),
     ),

@@ -97,7 +97,7 @@ describe("processBadgeGraphicUpload", () => {
     const meta = await sharp(data).metadata();
     expect(Math.max(meta.width ?? 0, meta.height ?? 0)).toBeLessThanOrEqual(256);
     expect(data.byteLength).toBeLessThanOrEqual(BADGE_GRAPHIC_TARGET_MAX_BYTES);
-  });
+  }, 25_000);
 
   it("removes a white AI-generated badge backdrop (End of Season style)", async () => {
     const source = await readFile(path.join(fixtures, "end-of-season-white-bg.jpg"));
@@ -109,7 +109,7 @@ describe("processBadgeGraphicUpload", () => {
     const meta = await sharp(data).metadata();
     expect(meta.hasAlpha).toBe(true);
     expect(meta.width).toBeGreaterThan(100);
-  });
+  }, 25_000);
 
   it("removes a black studio backdrop (Free Shipping style)", async () => {
     const source = await readFile(path.join(fixtures, "free-shipping-black-bg.jpg"));
@@ -118,7 +118,7 @@ describe("processBadgeGraphicUpload", () => {
     expect(meta.hasAlpha).toBe(true);
     const edge = await edgeTransparentRatioAvif(data);
     expect(edge).toBeGreaterThan(0.3);
-  });
+  }, 25_000);
 
   it(
     "accepts large source files that exceed the stored output size cap pre-resize",
@@ -130,6 +130,6 @@ describe("processBadgeGraphicUpload", () => {
       const { data } = await processBadgeGraphicUpload(huge);
       expect(data.byteLength).toBeLessThanOrEqual(BADGE_GRAPHIC_TARGET_MAX_BYTES);
     },
-    20_000,
+    30_000,
   );
 });

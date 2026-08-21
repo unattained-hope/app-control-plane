@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams, type LoaderFunctionArgs } from "react-router";
 import { getConfig } from "~/lib/config.js";
 import { ChatWidget } from "~/components/ChatWidget.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 
 /**
  * DEV-ONLY floating chat bubble + panel for exercising the merchant widget
@@ -68,9 +69,12 @@ export default function DevChatPanel() {
                 background: "#f9fafb",
               }}
             >
-              <div>
-                <strong style={{ fontSize: "0.875rem" }}>Support</strong>
-                <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{shop}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <StoreAvatar shop={shop} size="sm" />
+                <div>
+                  <strong style={{ fontSize: "0.875rem" }}>Support</strong>
+                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{shop}</div>
+                </div>
               </div>
               <button
                 type="button"

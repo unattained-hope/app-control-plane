@@ -1,4 +1,5 @@
 import { Card, Text, Title, Flex, Grid, Metric, Badge } from "@tremor/react";
+import { Activity } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
 import type { AppRouter } from "~/server/trpc/root.js";
@@ -32,7 +33,10 @@ export default function Monitoring() {
   if (tilesQuery.error?.data?.code === "FORBIDDEN") {
     return (
       <main className="apoaap-monitoring p-6" aria-label="Monitoring">
-        <Title>Portfolio health</Title>
+        <Title className="flex items-center gap-2">
+          <Activity className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Portfolio health</span>
+        </Title>
         <Card className="mt-4" role="alert" aria-label="Monitoring access denied">
           <Text className="font-medium">Ops access required</Text>
           <Text className="mt-1 text-xs text-tremor-content-subtle">
@@ -48,7 +52,10 @@ export default function Monitoring() {
   return (
     <main className="apoaap-monitoring p-6" aria-label="Monitoring">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>Portfolio health</Title>
+        <Title className="flex items-center gap-2">
+          <Activity className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Portfolio health</span>
+        </Title>
         {snap ? (
           <Text className="text-xs text-tremor-content-subtle">
             as of{" "}

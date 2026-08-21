@@ -41,6 +41,7 @@ export interface RawShopRow {
   readonly plan: string | null;
   readonly installedAt: Date;
   readonly uninstalledAt: Date | null;
+  readonly avatarUrl?: string | null;
 }
 
 /** Read source abstraction — a real replica client or a test fixture. */
@@ -114,6 +115,7 @@ export class SaleSwitchConnector implements AppConnector {
         status: r.status,
         plan: r.plan,
         installedAt: r.installedAt.toISOString(),
+        avatarUrl: r.avatarUrl ?? null,
       })),
       total,
       page,
@@ -136,6 +138,7 @@ export class SaleSwitchConnector implements AppConnector {
       uninstalledAt: r.uninstalledAt ? r.uninstalledAt.toISOString() : null,
       shopifyAdminUrl: `https://admin.shopify.com/store/${r.shopDomain.replace(".myshopify.com", "")}`,
       asOf: new Date().toISOString(),
+      avatarUrl: r.avatarUrl ?? null,
     };
   }
 

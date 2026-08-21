@@ -20,6 +20,7 @@ import {
 import { trpc } from "~/lib/trpc.js";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "~/server/trpc/root.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import { UsagePageShell } from "~/components/usage/UsagePageShell.js";
 import { ChartCard } from "~/components/usage/chartChrome.js";
 import { SavedViewsBar, type SavedViewParams } from "~/components/usage/SavedViewsBar.js";
@@ -151,9 +152,12 @@ export default function UsageShops() {
       columnHelper.accessor("shop", {
         header: "Shop",
         cell: (i) => (
-          <Link to={`/merchants/${encodeURIComponent(i.getValue())}`} className="text-tremor-brand hover:underline">
-            {i.getValue()}
-          </Link>
+          <div className="flex items-center gap-2">
+            <StoreAvatar shop={i.getValue()} size="xs" />
+            <Link to={`/merchants/${encodeURIComponent(i.getValue())}`} className="text-tremor-brand hover:underline">
+              {i.getValue()}
+            </Link>
+          </div>
         ),
       }),
       columnHelper.accessor("lifecycle", {

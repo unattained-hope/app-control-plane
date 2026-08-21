@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, Text, Title, Flex, Badge, Button, TextInput, Textarea } from "@tremor/react";
+import { Megaphone } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
 import type { AppRouter } from "~/server/trpc/root.js";
@@ -43,7 +44,10 @@ export default function Announcements() {
   if (isForbidden) {
     return (
       <main className="apoaap-announcements p-6" aria-label="Announcements">
-        <Title>Announcements</Title>
+        <Title className="flex items-center gap-2">
+          <Megaphone className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Announcements</span>
+        </Title>
         <Card className="mt-4" role="alert" aria-label="Announcements access denied">
           <Text className="font-medium">Admin access required</Text>
           <Text className="mt-1 text-xs text-tremor-content-subtle">
@@ -57,7 +61,10 @@ export default function Announcements() {
   return (
     <main className="apoaap-announcements p-6" aria-label="Announcements">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>Announcements</Title>
+        <Title className="flex items-center gap-2">
+          <Megaphone className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Announcements</span>
+        </Title>
         {npsQuery.data != null ? (
           <Badge color="blue" aria-label={`NPS ${npsQuery.data}`}>
             NPS {npsQuery.data}

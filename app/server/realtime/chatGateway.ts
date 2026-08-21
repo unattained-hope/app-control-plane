@@ -4,7 +4,6 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { Redis } from "ioredis";
 import { getConfig } from "~/lib/config.js";
 import { getConversationService } from "../services/conversationService.js";
-import { getRoutingService } from "../services/routingService.js";
 import { getCsatService } from "../services/csatService.js";
 import { getNpsService } from "../services/npsService.js";
 import { setChatBroadcaster } from "../services/announcementService.js";
@@ -108,9 +107,44 @@ export function attachChatGateway(httpServer: HttpServer): Server {
         },
       );
 
-      socket.on("agent:join", (conversationId: string) => {
+      socket.on("agent:join", async (conversationId: string) => {
         void socket.join(roomFor(conversationId));
         void conversations.markRead(conversationId);
+
+        try {
+          const convo = await conversations.getById(conversationId);
+          if (convo) {
+            // Signal across connected admin plane users that the chat has been opened / received (stops ringer)
+            io.to(inboxRoomFor(convo.appKey)).emit("chat:received", {
+              conversationId,
+              receivedBy: auth.userId,
+            });
+
+            // If the conversation is currently unassigned, auto-assign it to the agent opening it
+            if (!convo.assignedTo && auth.role !== "VIEWER") {
+              await conversations.assign(
+                {
+                  actorUserId: auth.userId,
+                  actorEmail: null,
+                  appKey: convo.appKey,
+                  ip: null,
+                  userAgent: null,
+                },
+                conversationId,
+                auth.userId,
+              );
+              io.to(inboxRoomFor(convo.appKey)).emit("conversation:assigned", {
+                conversationId,
+                assignedTo: auth.userId,
+              });
+              io.to(inboxRoomFor(convo.appKey)).emit("inbox:activity", {
+                conversationId,
+              });
+            }
+          }
+        } catch (err) {
+          captureError(err, { where: "chatGateway.agentJoin", conversationId });
+        }
       });
 
       socket.on("agent:inbox:subscribe", (appKey: string) => {
@@ -128,11 +162,21 @@ export function attachChatGateway(httpServer: HttpServer): Server {
       // filtered at the server, not the widget.
       const history = await conversations.merchantHistory(convo.id);
       socket.emit("history", history);
+      if (convo.isNew) {
+        io.to(inboxRoomFor(auth.appKey)).emit("inbox:activity", {
+          conversationId: convo.id,
+          isNewChat: true,
+          shop: auth.shop,
+        });
+      }
     });
 
     socket.on(
       "merchant:message",
       async (payload: { conversationId: string; body: string; attachmentUrl?: string }) => {
+        const convoBefore = await conversations.getById(payload.conversationId);
+        const isNewChat = !convoBefore?.assignedTo;
+
         const msg = await conversations.persistMessage({
           conversationId: payload.conversationId,
           senderType: "MERCHANT",
@@ -143,19 +187,16 @@ export function attachChatGateway(httpServer: HttpServer): Server {
         io.to(roomFor(payload.conversationId)).emit("message", msg);
         io.to(inboxRoomFor(auth.appKey)).emit("inbox:activity", {
           conversationId: payload.conversationId,
+          isNewChat,
+          shop: auth.shop,
         });
-
-        // Rule-based routing keyed off the merchant's message (cp-conversation-
-        // routing). Idempotent — only an unrouted conversation is routed — so this
-        // catches keyword rules that need the first message body. Best-effort.
-        try {
-          await getRoutingService().applyToNewConversation(auth.appKey, payload.conversationId, {
-            shop: auth.shop,
-            firstMessageBody: payload.body,
-          });
-        } catch (err) {
-          captureError(err, { where: "chatGateway.routing", shop: auth.shop });
-        }
+        io.to(inboxRoomFor(auth.appKey)).emit("chat:incoming", {
+          conversationId: payload.conversationId,
+          shop: auth.shop,
+          isNewChat,
+          message: msg,
+          assignedTo: convoBefore?.assignedTo ?? null,
+        });
 
         // Offline fallback (AC7.6): no agent online => email fallback + queue.
         if (!presence.anyAgentOnline()) {

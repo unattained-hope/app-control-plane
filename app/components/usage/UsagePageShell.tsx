@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router";
 import { Flex, Text, Title } from "@tremor/react";
+import { BarChart3 } from "lucide-react";
 import { AsOf, ProvisionalNote } from "./chartChrome.js";
 
 /**
@@ -36,7 +37,10 @@ export function UsagePageShell({
   return (
     <main className="p-6" aria-label={`Usage — ${title}`}>
       <Flex justifyContent="between" alignItems="baseline" className="mb-1 gap-4">
-        <Title>Usage · {title}</Title>
+        <Title className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Usage · {title}</span>
+        </Title>
         {asOf !== undefined ? <AsOf iso={asOf ?? null} /> : null}
       </Flex>
       {description ? (

@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { Card, Text, Title, Flex, Badge } from "@tremor/react";
+import { CreditCard } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import type { AppRouter } from "~/server/trpc/root.js";
 
 /**
@@ -32,7 +34,10 @@ export default function PlanRequests() {
   return (
     <main className="apoaap-plan-requests p-6" aria-label="Plan change requests">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>Plan change requests</Title>
+        <Title className="flex items-center gap-2">
+          <CreditCard className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Plan change requests</span>
+        </Title>
         <Text className="text-xs text-tremor-content-subtle">
           Merchant self-serve requests, dispatched to the app admin API.
         </Text>
@@ -66,7 +71,12 @@ export default function PlanRequests() {
                 rows.map((r) => (
                   <tr key={r.id} className="apoaap-audit-tr">
                     <td className="apoaap-audit-td">{formatTimestamp(r.createdAt)}</td>
-                    <td className="apoaap-audit-td">{r.shop}</td>
+                    <td className="apoaap-audit-td">
+                      <div className="flex items-center gap-2">
+                        <StoreAvatar shop={r.shop} size="xs" />
+                        <span>{r.shop}</span>
+                      </div>
+                    </td>
                     <td className="apoaap-audit-td">
                       {(r.fromPlan ?? "—")} → {r.toPlan}
                     </td>

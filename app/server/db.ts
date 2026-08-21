@@ -19,4 +19,8 @@ export function getDb(): PrismaClient {
   return globalForPrisma.__cpPrisma;
 }
 
+export function setDbForTesting(client: PrismaClient | null): void {
+  globalForPrisma.__cpPrisma = client ?? undefined;
+}
+
 export type Db = PrismaClient;

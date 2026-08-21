@@ -58,14 +58,6 @@ enum SlaState {
   MET
 }
 
-/// Which attribute an assignment rule matches on (cp-conversation-routing).
-enum RuleMatchField {
-  KEYWORD
-  PLAN
-  PRIORITY
-  SHOP
-}
-
 /// Whether an audit row was produced by a staff user or an automated job
 /// (cp-audit-taxonomy).
 enum AuditActorType {
@@ -533,24 +525,6 @@ model CannedReply {
   @@unique([appKey, shortcut])
   @@index([appKey])
   @@map("canned_replies")
-}
-
-/// Control-plane-owned, ordered conversation auto-assignment rule
-/// (cp-conversation-routing). Evaluated first-match-wins on new conversations.
-model AssignmentRule {
-  id          String         @id @default(cuid())
-  appKey      String
-  order       Int // lower runs first; first match wins
-  matchField  RuleMatchField
-  matchValue  String
-  assignTo    String? // AdminUser id to assign (presence-checked at apply time)
-  setPriority Priority?
-  active      Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-
-  @@index([appKey, active, order])
-  @@map("assignment_rules")
 }
 
 /// Control-plane-owned conversation tag (cp-conversation-csat). Mirrors MerchantTag;

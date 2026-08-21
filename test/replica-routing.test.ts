@@ -30,7 +30,7 @@ describe("SaleSwitchConnector replica-only routing", () => {
     const row = page.rows[0]!;
     // Common shape keys — not raw app-table columns like shopDomain/contactEmail.
     expect(Object.keys(row).sort()).toEqual(
-      ["email", "installedAt", "name", "plan", "shop", "status"].sort(),
+      ["avatarUrl", "email", "installedAt", "name", "plan", "shop", "status"].sort(),
     );
     expect(typeof page.asOf).toBe("string");
   });

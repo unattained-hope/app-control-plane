@@ -23,6 +23,7 @@ interface ShopRow {
   installed_at: Date | null;
   uninstalled_at: Date | null;
   created_at: Date;
+  avatar_url?: string | null;
 }
 
 function mapStatus(row: ShopRow): string {
@@ -47,6 +48,7 @@ function toRaw(row: ShopRow): RawShopRow {
     plan: row.plan_name ?? row.plan_key,
     installedAt: row.installed_at ?? row.created_at,
     uninstalledAt: row.uninstalled_at,
+    avatarUrl: row.avatar_url ?? null,
   };
 }
 

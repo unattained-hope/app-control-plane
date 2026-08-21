@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import type { Role } from "@prisma/client";
 import { Text } from "@tremor/react";
 import {
   Bold,
   ChevronDown,
   Code,
+  Eye,
   FileText,
   Italic,
   List,
   Loader2,
   Paperclip,
+  PenTool,
   Send,
   X,
 } from "lucide-react";
@@ -17,6 +19,11 @@ import { trpc } from "~/lib/trpc.js";
 import { useAgentChatSocket } from "~/lib/agentChatSocket.js";
 import type { ComposerTab } from "./types.js";
 import { SlashCommandPicker } from "./SlashCommandPicker.js";
+import { MarkdownText } from "./MarkdownText.js";
+import {
+  markdownToHtml,
+  domToMarkdown,
+} from "./richTextConverter.js";
 
 const TYPING_IDLE_MS = 2500;
 
@@ -58,21 +65,40 @@ export function ConversationComposer({
   const [slashQuery, setSlashQuery] = useState("");
   const [sendMenuOpen, setSendMenuOpen] = useState(false);
   const [sendMode, setSendMode] = useState<SendMode>("SEND");
+  const [showPreview, setShowPreview] = useState(false);
 
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const typingIdleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const lastDraftRef = useRef<string>(draft);
 
   const setStatus = trpc.chat.setStatus.useMutation();
 
   const postNote = trpc.chat.postInternalNote.useMutation({
     onSuccess: () => {
       onDraftChange("");
+      lastDraftRef.current = "";
+      if (editorRef.current) {
+        editorRef.current.innerHTML = "";
+      }
       setAttachment(null);
       onPosted();
     },
   });
+
+  // Sync draft prop into editor contenteditable when changed externally
+  useEffect(() => {
+    if (draft !== lastDraftRef.current) {
+      lastDraftRef.current = draft;
+      if (editorRef.current) {
+        const nextHtml = markdownToHtml(draft);
+        if (editorRef.current.innerHTML !== nextHtml) {
+          editorRef.current.innerHTML = nextHtml;
+        }
+      }
+    }
+  }, [draft]);
 
   useEffect(() => {
     clearReplyError();
@@ -80,6 +106,7 @@ export function ConversationComposer({
     setUploadError(null);
     setSlashOpen(false);
     setSendMenuOpen(false);
+    setShowPreview(false);
   }, [conversationId, activeTab, clearReplyError]);
 
   useEffect(() => {
@@ -124,88 +151,91 @@ export function ConversationComposer({
     }, TYPING_IDLE_MS);
   }
 
-  function detectSlashCommand(text: string, cursorPos: number) {
-    const textBeforeCursor = text.substring(0, cursorPos);
-    const lastSlashIdx = textBeforeCursor.lastIndexOf("/");
-    if (lastSlashIdx !== -1) {
-      const prevChar = textBeforeCursor[lastSlashIdx - 1];
-      const isStart = lastSlashIdx === 0 || (prevChar !== undefined && /\s/.test(prevChar));
-      const term = textBeforeCursor.substring(lastSlashIdx);
-      if (isStart && !/\s/.test(term)) {
-        setSlashQuery(term);
-        setSlashOpen(true);
-        return;
+  const syncEditorValue = useCallback(() => {
+    if (!editorRef.current) return;
+    const md = domToMarkdown(editorRef.current);
+    const cleanMd = md.replace(/\n{3,}/g, "\n\n").trimEnd();
+    lastDraftRef.current = cleanMd;
+    onDraftChange(cleanMd);
+
+    // Detect slash command
+    const selection = window.getSelection();
+    if (selection && selection.anchorNode) {
+      const text = editorRef.current.innerText || "";
+      const lastSlashIdx = text.lastIndexOf("/");
+      if (lastSlashIdx !== -1) {
+        const query = text.substring(lastSlashIdx);
+        if (!/\s/.test(query)) {
+          setSlashQuery(query);
+          setSlashOpen(true);
+        } else {
+          setSlashOpen(false);
+        }
+      } else {
+        setSlashOpen(false);
       }
     }
-    setSlashOpen(false);
-  }
 
-  function handleDraftChange(next: string): void {
-    onDraftChange(next);
-
-    const cursorPos = textareaRef.current?.selectionStart ?? next.length;
-    detectSlashCommand(next, cursorPos);
-
-    if (activeTab !== "reply") return;
-
-    if (next.trim()) {
-      setTyping(conversationId, true);
-      scheduleTypingStop();
-      return;
-    }
-
-    stopTyping();
-  }
-
-  function applyFormatting(
-    prefix: string,
-    suffix: string = "",
-    defaultText: string = "text",
-    block: boolean = false,
-  ) {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart ?? 0;
-    const end = textarea.selectionEnd ?? 0;
-    const selection = draft.substring(start, end);
-
-    let insertion = "";
-    let newCursorPos = start;
-
-    if (block) {
-      const isStartOfLine = start === 0 || draft[start - 1] === "\n";
-      const preNewline = isStartOfLine ? "" : "\n";
-      const postNewline = end === draft.length || draft[end] === "\n" ? "" : "\n";
-
-      if (selection) {
-        insertion = `${preNewline}${prefix}${selection}${suffix}${postNewline}`;
-        newCursorPos = start + preNewline.length + prefix.length + selection.length + suffix.length;
+    if (activeTab === "reply") {
+      if (cleanMd.trim()) {
+        setTyping(conversationId, true);
+        scheduleTypingStop();
       } else {
-        insertion = `${preNewline}${prefix}${defaultText}${suffix}${postNewline}`;
-        newCursorPos = start + preNewline.length + prefix.length;
+        stopTyping();
+      }
+    }
+  }, [activeTab, conversationId, onDraftChange, setTyping]);
+
+  function executeFormat(command: string, value: string | undefined = undefined) {
+    if (showPreview) setShowPreview(false);
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+    document.execCommand(command, false, value);
+    syncEditorValue();
+  }
+
+  function handleInlineCode() {
+    if (showPreview) setShowPreview(false);
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const selectedText = range.toString();
+
+    if (selectedText) {
+      const parentCode = (selection.anchorNode?.parentElement?.closest("code") ?? null) as HTMLElement | null;
+      if (parentCode) {
+        const textNode = document.createTextNode(parentCode.textContent || "");
+        parentCode.parentNode?.replaceChild(textNode, parentCode);
+      } else {
+        const codeEl = document.createElement("code");
+        codeEl.style.background = "var(--cp-surface-2, rgba(255,255,255,0.1))";
+        codeEl.style.padding = "0.1rem 0.35rem";
+        codeEl.style.borderRadius = "0.25rem";
+        codeEl.style.fontFamily = "var(--cp-font-mono, monospace)";
+        codeEl.style.fontSize = "0.85em";
+        codeEl.textContent = selectedText;
+        range.deleteContents();
+        range.insertNode(codeEl);
+        range.selectNodeContents(codeEl);
       }
     } else {
-      if (selection) {
-        insertion = `${prefix}${selection}${suffix}`;
-        newCursorPos = start + prefix.length + selection.length + suffix.length;
-      } else {
-        insertion = `${prefix}${defaultText}${suffix}`;
-        newCursorPos = start + prefix.length;
-      }
+      const codeEl = document.createElement("code");
+      codeEl.style.background = "var(--cp-surface-2, rgba(255,255,255,0.1))";
+      codeEl.style.padding = "0.1rem 0.35rem";
+      codeEl.style.borderRadius = "0.25rem";
+      codeEl.style.fontFamily = "var(--cp-font-mono, monospace)";
+      codeEl.style.fontSize = "0.85em";
+      codeEl.textContent = "code";
+      range.insertNode(codeEl);
+      range.selectNodeContents(codeEl);
     }
-
-    const nextValue = draft.substring(0, start) + insertion + draft.substring(end);
-    onDraftChange(nextValue);
-
-    setTimeout(() => {
-      textarea.focus();
-      if (!selection) {
-        textarea.setSelectionRange(newCursorPos, newCursorPos + defaultText.length);
-      } else {
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 0);
+    syncEditorValue();
   }
 
   async function handleFileUpload(file: File) {
@@ -223,7 +253,7 @@ export function ConversationComposer({
       });
       const data = await res.json();
       if (!res.ok || data.error) {
-        throw new Error(data.error || "Failed to upload file");
+        throw new Error(data.error || `Upload failed with status ${res.status}`);
       }
       setAttachment({
         url: data.attachmentUrl,
@@ -246,7 +276,7 @@ export function ConversationComposer({
     e.target.value = "";
   }
 
-  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+  function handlePaste(e: React.ClipboardEvent) {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -281,25 +311,25 @@ export function ConversationComposer({
   }
 
   function handleSelectCanned(body: string) {
-    const textarea = textareaRef.current;
     const currentVal = draft;
-    const cursorPos = textarea?.selectionStart ?? currentVal.length;
-    const textBeforeCursor = currentVal.substring(0, cursorPos);
-    const lastSlashIdx = textBeforeCursor.lastIndexOf("/");
+    const lastSlashIdx = currentVal.lastIndexOf("/");
 
+    let nextVal = "";
     if (lastSlashIdx !== -1) {
       const prefix = currentVal.substring(0, lastSlashIdx);
-      const suffix = currentVal.substring(cursorPos);
-      const nextVal = prefix + body + (suffix.startsWith("\n") || !suffix ? "" : " ") + suffix;
-      onDraftChange(nextVal);
+      nextVal = prefix + body;
     } else {
-      onDraftChange(currentVal ? `${currentVal}\n${body}` : body);
+      nextVal = currentVal ? `${currentVal}\n${body}` : body;
+    }
+
+    onDraftChange(nextVal);
+    lastDraftRef.current = nextVal;
+    if (editorRef.current) {
+      editorRef.current.innerHTML = markdownToHtml(nextVal);
+      editorRef.current.focus();
     }
 
     setSlashOpen(false);
-    setTimeout(() => {
-      textarea?.focus();
-    }, 0);
   }
 
   async function submitDraft(mode: SendMode = sendMode) {
@@ -311,6 +341,10 @@ export function ConversationComposer({
       stopTyping();
       sendReply(conversationId, body, attachment?.url ?? null);
       onDraftChange("");
+      lastDraftRef.current = "";
+      if (editorRef.current) {
+        editorRef.current.innerHTML = "";
+      }
       setAttachment(null);
 
       if (mode === "SEND_AND_CLOSE") {
@@ -364,12 +398,43 @@ export function ConversationComposer({
     void submitDraft(sendMode);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleKeyDown(e: React.KeyboardEvent) {
     if (slashOpen && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Escape")) {
       return;
     }
 
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+    const isCtrlOrCmd = e.metaKey || e.ctrlKey;
+
+    // Bold shortcut: Ctrl+B / Cmd+B
+    if (isCtrlOrCmd && !e.shiftKey && e.key.toLowerCase() === "b") {
+      e.preventDefault();
+      executeFormat("bold");
+      return;
+    }
+
+    // Italic shortcut: Ctrl+I / Cmd+I
+    if (isCtrlOrCmd && !e.shiftKey && e.key.toLowerCase() === "i") {
+      e.preventDefault();
+      executeFormat("italic");
+      return;
+    }
+
+    // Inline Code shortcut: Ctrl+E / Ctrl+` / Cmd+E
+    if (isCtrlOrCmd && !e.shiftKey && (e.key.toLowerCase() === "e" || e.key === "`")) {
+      e.preventDefault();
+      handleInlineCode();
+      return;
+    }
+
+    // Strikethrough shortcut: Ctrl+Shift+X / Cmd+Shift+X / Ctrl+Shift+S
+    if (isCtrlOrCmd && e.shiftKey && (e.key.toLowerCase() === "x" || e.key.toLowerCase() === "s")) {
+      e.preventDefault();
+      executeFormat("strikeThrough");
+      return;
+    }
+
+    // Submit shortcuts: Ctrl+Enter or Ctrl+Shift+Enter
+    if (isCtrlOrCmd && e.key === "Enter") {
       e.preventDefault();
       if (e.shiftKey) {
         void submitDraft("SEND_AND_CLOSE");
@@ -396,7 +461,7 @@ export function ConversationComposer({
 
   const placeholder =
     activeTab === "reply"
-      ? "Write a response... (Type '/' for templates, Ctrl+Enter to send)"
+      ? "Write a response... (Ctrl+B bold, Ctrl+I italic, '/' for templates, Ctrl+Enter to send)"
       : "Internal note — visible to agents only…";
 
   const isPending = activeTab === "reply" ? sending : postNote.isPending;
@@ -479,7 +544,7 @@ export function ConversationComposer({
               title="Bold (Ctrl+B)"
               aria-label="Format bold"
               disabled={isPending || uploading}
-              onClick={() => applyFormatting("**", "**", "bold text")}
+              onClick={() => executeFormat("bold")}
             >
               <Bold size={13} />
             </button>
@@ -489,17 +554,17 @@ export function ConversationComposer({
               title="Italic (Ctrl+I)"
               aria-label="Format italic"
               disabled={isPending || uploading}
-              onClick={() => applyFormatting("*", "*", "italic text")}
+              onClick={() => executeFormat("italic")}
             >
               <Italic size={13} />
             </button>
             <button
               type="button"
               className="apoaap-composer-action-btn"
-              title="Inline Code"
+              title="Inline Code (Ctrl+E)"
               aria-label="Format inline code"
               disabled={isPending || uploading}
-              onClick={() => applyFormatting("`", "`", "code")}
+              onClick={handleInlineCode}
             >
               <Code size={13} />
             </button>
@@ -509,11 +574,24 @@ export function ConversationComposer({
               title="Bullet List"
               aria-label="Insert bullet list"
               disabled={isPending || uploading}
-              onClick={() => applyFormatting("- ", "", "item", true)}
+              onClick={() => executeFormat("insertUnorderedList")}
             >
               <List size={13} />
             </button>
+
             <span className="apoaap-composer-sep" aria-hidden="true" />
+
+            <button
+              type="button"
+              className={`apoaap-composer-action-btn ${showPreview ? "is-active" : ""}`}
+              title={showPreview ? "Switch to Rich Editor" : "Preview Markdown"}
+              aria-label={showPreview ? "Switch to rich editor" : "Preview markdown"}
+              disabled={isPending || uploading}
+              onClick={() => setShowPreview((prev) => !prev)}
+            >
+              {showPreview ? <PenTool size={13} /> : <Eye size={13} />}
+            </button>
+
             <button
               type="button"
               className="apoaap-composer-canned-btn"
@@ -521,10 +599,16 @@ export function ConversationComposer({
               aria-label="Open canned replies"
               disabled={isPending || uploading}
               onClick={() => {
-                onDraftChange(draft ? `${draft} /` : "/");
+                if (showPreview) setShowPreview(false);
+                const nextVal = draft ? `${draft} /` : "/";
+                onDraftChange(nextVal);
+                lastDraftRef.current = nextVal;
+                if (editorRef.current) {
+                  editorRef.current.innerHTML = markdownToHtml(nextVal);
+                  editorRef.current.focus();
+                }
                 setSlashQuery("/");
                 setSlashOpen(true);
-                setTimeout(() => textareaRef.current?.focus(), 0);
               }}
             >
               / Canned
@@ -532,20 +616,28 @@ export function ConversationComposer({
           </div>
         </div>
 
-        {/* Textarea Area */}
+        {/* Text Area (WYSIWYG Rich Editor / Live Markdown Preview) */}
         <div className="apoaap-composer-card-body">
-          <textarea
-            ref={textareaRef}
-            id="inbox-composer-body"
-            placeholder={placeholder}
-            value={draft}
-            onChange={(e) => handleDraftChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            rows={3}
-            className="apoaap-composer-textarea"
-            aria-label={activeTab === "reply" ? "Reply body" : "Internal note body"}
-          />
+          {showPreview ? (
+            <div className="apoaap-composer-preview-pane">
+              <MarkdownText content={draft || "*No content to preview*"} />
+            </div>
+          ) : (
+            <div
+              ref={editorRef}
+              id="inbox-composer-body"
+              contentEditable
+              role="textbox"
+              aria-multiline="true"
+              aria-label={activeTab === "reply" ? "Reply body" : "Internal note body"}
+              data-placeholder={placeholder}
+              className="apoaap-composer-rich-editor"
+              onInput={syncEditorValue}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              tabIndex={0}
+            />
+          )}
         </div>
 
         {/* Attachment Preview Chip */}
@@ -555,10 +647,10 @@ export function ConversationComposer({
               <img
                 src={attachment.url}
                 alt={attachment.filename}
-                style={{ width: "20px", height: "20px", objectFit: "cover", borderRadius: "3px" }}
+                style={{ width: "24px", height: "24px", objectFit: "cover", borderRadius: "3px" }}
               />
             ) : (
-              <FileText size={15} style={{ color: "var(--cp-accent)" }} />
+              <FileText size={16} style={{ color: "var(--cp-accent)" }} />
             )}
             <span className="apoaap-composer-attachment-name">{attachment.filename}</span>
             <span className="apoaap-composer-attachment-size">({(attachment.size / 1024).toFixed(0)} KB)</span>
@@ -569,15 +661,26 @@ export function ConversationComposer({
               aria-label="Remove attachment"
               onClick={() => setAttachment(null)}
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           </div>
         ) : null}
 
         {errorMessage ? (
-          <Text className="apoaap-inbox-composer-error" role="alert">
-            {errorMessage}
-          </Text>
+          <div className="apoaap-inbox-composer-error" role="alert" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>{errorMessage}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setUploadError(null);
+                clearReplyError();
+              }}
+              style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: "0 4px" }}
+              title="Dismiss error"
+            >
+              <X size={12} />
+            </button>
+          </div>
         ) : null}
 
         {/* Bottom bar: Attachment & Hint on Left, Send Button on Right */}

@@ -18,7 +18,7 @@ import {
   BADGE_GRAPHIC_TYPES,
 } from "~/lib/badgeGraphicTypes.js";
 import { ConfirmDangerModal } from "~/components/ConfirmDangerModal.js";
-import { Archive, Check, Copy, Pencil, Star, Trash2 } from "lucide-react";
+import { Archive, Check, Copy, Palette, Pencil, Star, Trash2 } from "lucide-react";
 
 type Graphic = inferRouterOutputs<AppRouter>["badgeGraphics"]["list"][number];
 
@@ -373,7 +373,10 @@ export default function SettingsBadgeGraphics() {
         ← Settings
       </Link>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <Title>Badge graphics</Title>
+        <Title className="flex items-center gap-2">
+          <Palette className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Badge graphics</span>
+        </Title>
         <Button onClick={openCreate} disabled={showForm && !editing}>
           Add graphic
         </Button>

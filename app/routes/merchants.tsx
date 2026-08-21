@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Card, Text, Title, Flex } from "@tremor/react";
+import { Store } from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
@@ -9,6 +10,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { trpc } from "~/lib/trpc.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 
 /**
  * Merchant directory (cp-merchant-directory). A read-only, server-driven table
@@ -31,6 +33,7 @@ interface MerchantRow {
   readonly status: string;
   readonly plan: string | null;
   readonly installedAt: string; // ISO
+  readonly avatarUrl?: string | null;
 }
 
 /** Map a react-table column id to the server's `sortField` (or null if unsortable). */
@@ -62,10 +65,18 @@ const columns = [
         className="apoaap-merchant-link"
         aria-label={`Open ${info.row.original.name || info.row.original.shop}`}
       >
-        <span className="apoaap-merchant-name">
-          {info.getValue() || info.row.original.shop}
-        </span>
-        <span className="apoaap-merchant-shop">{info.row.original.shop}</span>
+        <StoreAvatar
+          shop={info.row.original.shop}
+          name={info.row.original.name}
+          avatarUrl={info.row.original.avatarUrl}
+          size="md"
+        />
+        <div className="min-w-0">
+          <span className="apoaap-merchant-name">
+            {info.getValue() || info.row.original.shop}
+          </span>
+          <span className="apoaap-merchant-shop">{info.row.original.shop}</span>
+        </div>
       </Link>
     ),
   }),
@@ -175,7 +186,10 @@ export default function Merchants() {
   return (
     <main className="apoaap-merchants p-6" aria-label="Merchant directory">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>Merchants</Title>
+        <Title className="flex items-center gap-2">
+          <Store className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Merchants</span>
+        </Title>
         {asOf ? (
           <Text className="text-xs text-tremor-content-subtle">
             as of <time dateTime={asOf}>{formatTimestamp(asOf)}</time>

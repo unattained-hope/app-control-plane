@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { Card, Text, Title, Flex, Badge } from "@tremor/react";
+import { AlertTriangle } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import type { AppRouter } from "~/server/trpc/root.js";
 
 /**
@@ -31,7 +33,10 @@ export default function AtRisk() {
   return (
     <main className="apoaap-at-risk p-6" aria-label="At-risk merchants">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>At-risk merchants</Title>
+        <Title className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>At-risk merchants</span>
+        </Title>
         <Text className="text-xs text-tremor-content-subtle">
           Ranked by health band, worst first. Scored by the growth rollup.
         </Text>
@@ -68,9 +73,12 @@ export default function AtRisk() {
                 rows.map((r) => (
                   <tr key={r.shop} className="apoaap-audit-tr">
                     <td className="apoaap-audit-td">
-                      <a href={`/merchants/${r.shop}`} className="text-tremor-brand hover:underline">
-                        {r.shop}
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <StoreAvatar shop={r.shop} size="xs" />
+                        <a href={`/merchants/${r.shop}`} className="text-tremor-brand hover:underline">
+                          {r.shop}
+                        </a>
+                      </div>
                     </td>
                     <td className="apoaap-audit-td">
                       <Badge color={BAND_TONE[r.band] ?? "gray"} aria-label={`band ${r.band}`}>

@@ -69,7 +69,7 @@ export default function UsageFeatures() {
                 index={windowDays === 30 ? 0 : 1}
                 onIndexChange={(i) => setWindowDays(i === 0 ? 30 : 90)}
               >
-                <TabList variant="solid" aria-label="Adoption window">
+                <TabList variant="solid" aria-label="Adoption window" className="overflow-visible">
                   <Tab>30-day</Tab>
                   <Tab>90-day</Tab>
                 </TabList>

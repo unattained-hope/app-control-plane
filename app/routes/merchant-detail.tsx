@@ -22,12 +22,12 @@ import {
   Title,
 } from "@tremor/react";
 import type { inferRouterOutputs } from "@trpc/server";
-import { Ban, Check, Circle, Eye, Flag, WandSparkles } from "lucide-react";
+import { Ban, Check, Circle, Eye, Flag, Store, Trash2, WandSparkles, X } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import type { AppRouter } from "~/server/trpc/root.js";
 
 type MerchantOverview = NonNullable<inferRouterOutputs<AppRouter>["directory"]["overview"]>;
-type ConversationSummary = MerchantOverview["conversations"][number];
 type AuditEntry = MerchantOverview["audit"][number];
 type ActivityEvent = inferRouterOutputs<AppRouter>["usage"]["activity"]["events"][number];
 type CampaignMonitorResult = inferRouterOutputs<AppRouter>["directory"]["campaignMonitor"];
@@ -197,9 +197,9 @@ function HealthCard({ shop }: { readonly shop: string }) {
 
   if (health.isLoading) {
     return (
-      <Card aria-label="Merchant health" aria-busy="true">
+      <Card className="p-4 sm:p-5" aria-label="Merchant health" aria-busy="true">
         <Title>Health</Title>
-        <Text className="mt-2" role="status">
+        <Text className="mt-2 text-xs" role="status">
           Loading health…
         </Text>
       </Card>
@@ -209,9 +209,9 @@ function HealthCard({ shop }: { readonly shop: string }) {
   const row = health.data;
   if (!row) {
     return (
-      <Card aria-label="Merchant health">
+      <Card className="p-4 sm:p-5" aria-label="Merchant health">
         <Title>Health</Title>
-        <Text className="mt-2 text-tremor-content-subtle">
+        <Text className="mt-2 text-xs text-tremor-content-subtle">
           Not yet scored — the growth rollup will populate this shortly.
         </Text>
       </Card>
@@ -219,32 +219,42 @@ function HealthCard({ shop }: { readonly shop: string }) {
   }
 
   return (
-    <Card aria-label="Merchant health">
-      <Flex justifyContent="between" alignItems="start">
-        <Title>Health</Title>
-        <Badge color={HEALTH_TONE[row.band] ?? "gray"} aria-label={`Health ${HEALTH_LABEL[row.band] ?? row.band}`}>
-          {HEALTH_LABEL[row.band] ?? row.band}
-        </Badge>
-      </Flex>
-      <Text className="mt-1 text-xs text-tremor-content-subtle">Risk score {row.score}</Text>
+    <Card className="p-4 sm:p-5 flex flex-col justify-between" aria-label="Merchant health">
+      <div>
+        <Flex justifyContent="between" alignItems="start" className="gap-2">
+          <div>
+            <Title>Health</Title>
+            <Text className="mt-0.5 text-xs text-tremor-content-subtle">Risk score {row.score}</Text>
+          </div>
+          <Badge
+            size="xs"
+            color={HEALTH_TONE[row.band] ?? "gray"}
+            aria-label={`Health ${HEALTH_LABEL[row.band] ?? row.band}`}
+          >
+            {HEALTH_LABEL[row.band] ?? row.band}
+          </Badge>
+        </Flex>
 
-      <Divider className="my-3" />
+        <Divider className="my-2.5" />
 
-      {row.factors.length === 0 ? (
-        <Text className="text-tremor-content-subtle">No risk factors. 🎉</Text>
-      ) : (
-        <List aria-label="Health factors">
-          {row.factors.map((f) => (
-            <ListItem key={f.key}>
-              <Text>{f.key}</Text>
-              <Text className="text-tremor-content-subtle">+{f.points}</Text>
-            </ListItem>
-          ))}
-        </List>
-      )}
+        {row.factors.length === 0 ? (
+          <Text className="text-xs text-tremor-content-subtle py-1">No risk factors. 🎉</Text>
+        ) : (
+          <List aria-label="Health factors" className="divide-y-0">
+            {row.factors.map((f) => (
+              <ListItem key={f.key} className="py-1">
+                <Text className="truncate text-xs">{f.key}</Text>
+                <Text className="shrink-0 text-xs text-tremor-content-subtle font-mono">+{f.points}</Text>
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </div>
 
-      <Divider className="my-3" />
-      <AsOf iso={row.asOf} />
+      <div>
+        <Divider className="my-2.5" />
+        <AsOf iso={row.asOf} />
+      </div>
     </Card>
   );
 }
@@ -258,9 +268,9 @@ function DetailRow({
   readonly children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-1">
-      <Text className="text-tremor-content-subtle">{label}</Text>
-      <div className="text-right">{children}</div>
+    <div className="flex items-center justify-between gap-2 py-0.5">
+      <Text className="text-xs text-tremor-content-subtle shrink-0">{label}</Text>
+      <div className="text-right min-w-0 text-xs">{children}</div>
     </div>
   );
 }
@@ -279,47 +289,58 @@ function ShopInfoCard({
     readonly installedAt: string;
     readonly uninstalledAt: string | null;
     readonly shopifyAdminUrl: string;
+    readonly avatarUrl?: string | null;
   };
 }) {
   return (
-    <Card aria-label="Shop information">
-      <Title>{detail.name ?? shop}</Title>
-      <Text className="mt-1">{shop}</Text>
+    <Card className="p-4 sm:p-5 flex flex-col justify-between" aria-label="Shop information">
+      <div>
+        <div className="flex items-center gap-3">
+          <StoreAvatar shop={shop} name={detail.name} avatarUrl={detail.avatarUrl} size="lg" />
+          <div className="min-w-0 flex-1">
+            <Title className="truncate">{detail.name ?? shop}</Title>
+            <Text className="mt-0.5 truncate text-xs text-tremor-content-subtle">{shop}</Text>
+          </div>
+        </div>
 
-      <Divider className="my-3" />
+        <Divider className="my-2.5" />
 
-      <DetailRow label="Email">
-        <RevealableEmail shop={shop} masked={detail.email} />
-      </DetailRow>
-      <DetailRow label="Status">
-        <Badge aria-label={`Status ${detail.status}`}>{detail.status}</Badge>
-      </DetailRow>
-      <DetailRow label="Lifecycle">
-        <Badge aria-label={`Lifecycle ${detail.lifecycle}`} color="blue">
-          {detail.lifecycle}
-        </Badge>
-      </DetailRow>
-      <DetailRow label="Plan">
-        <Text>{detail.plan ?? "—"}</Text>
-      </DetailRow>
-      <DetailRow label="Installed">
-        <Text>{formatDate(detail.installedAt)}</Text>
-      </DetailRow>
-      <DetailRow label="Uninstalled">
-        <Text>{detail.uninstalledAt ? formatDate(detail.uninstalledAt) : "—"}</Text>
-      </DetailRow>
+        <div className="space-y-1">
+          <DetailRow label="Email">
+            <RevealableEmail shop={shop} masked={detail.email} />
+          </DetailRow>
+          <DetailRow label="Status">
+            <Badge size="xs" aria-label={`Status ${detail.status}`}>{detail.status}</Badge>
+          </DetailRow>
+          <DetailRow label="Lifecycle">
+            <Badge size="xs" aria-label={`Lifecycle ${detail.lifecycle}`} color="blue">
+              {detail.lifecycle}
+            </Badge>
+          </DetailRow>
+          <DetailRow label="Plan">
+            <Text className="text-xs">{detail.plan ?? "—"}</Text>
+          </DetailRow>
+          <DetailRow label="Installed">
+            <Text className="text-xs">{formatDate(detail.installedAt)}</Text>
+          </DetailRow>
+          <DetailRow label="Uninstalled">
+            <Text className="text-xs">{detail.uninstalledAt ? formatDate(detail.uninstalledAt) : "—"}</Text>
+          </DetailRow>
+        </div>
+      </div>
 
-      <Divider className="my-3" />
-
-      <a
-        href={detail.shopifyAdminUrl}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="text-tremor-brand hover:underline"
-        aria-label="Open in Shopify admin (new tab)"
-      >
-        Open in Shopify admin ↗
-      </a>
+      <div>
+        <Divider className="my-2.5" />
+        <a
+          href={detail.shopifyAdminUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-xs font-medium text-tremor-brand hover:underline"
+          aria-label="Open in Shopify admin (new tab)"
+        >
+          Open in Shopify admin ↗
+        </a>
+      </div>
     </Card>
   );
 }
@@ -329,9 +350,9 @@ function BillingCard({ shop }: { readonly shop: string }) {
 
   if (subscription.isLoading) {
     return (
-      <Card aria-label="Subscription" aria-busy="true">
+      <Card className="p-4 sm:p-5" aria-label="Subscription" aria-busy="true">
         <Title>Subscription</Title>
-        <Text className="mt-2" role="status">
+        <Text className="mt-2 text-xs" role="status">
           Loading subscription…
         </Text>
       </Card>
@@ -340,9 +361,9 @@ function BillingCard({ shop }: { readonly shop: string }) {
 
   if (subscription.isError || !subscription.data) {
     return (
-      <Card aria-label="Subscription" role="alert">
+      <Card className="p-4 sm:p-5" aria-label="Subscription" role="alert">
         <Title>Subscription</Title>
-        <Text className="mt-2 text-tremor-content-subtle">
+        <Text className="mt-2 text-xs text-tremor-content-subtle">
           Subscription state is currently unavailable.
         </Text>
       </Card>
@@ -353,48 +374,53 @@ function BillingCard({ shop }: { readonly shop: string }) {
   const status = sub.status;
 
   return (
-    <Card aria-label="Subscription">
-      <Flex justifyContent="between" alignItems="start">
-        <Title>Subscription</Title>
-        <Badge
-          color={SUBSCRIPTION_TONE[status]}
-          aria-label={`Subscription status ${SUBSCRIPTION_LABEL[status]}`}
-        >
-          {SUBSCRIPTION_LABEL[status]}
-        </Badge>
-      </Flex>
+    <Card className="p-4 sm:p-5 flex flex-col justify-between" aria-label="Subscription">
+      <div>
+        <Flex justifyContent="between" alignItems="start" className="gap-2">
+          <Title>Subscription</Title>
+          <Badge
+            size="xs"
+            color={SUBSCRIPTION_TONE[status]}
+            aria-label={`Subscription status ${SUBSCRIPTION_LABEL[status]}`}
+          >
+            {SUBSCRIPTION_LABEL[status]}
+          </Badge>
+        </Flex>
 
-      {sub.stale ? (
-        <div
-          role="status"
-          aria-label="Subscription data is stale"
-          className="mt-2 apoaap-callout-note px-2 py-1"
-        >
-          <Text className="text-xs text-cp-note-text">
-            Live billing read failed — showing the last known value, which may be
-            out of date.
-          </Text>
+        {sub.stale ? (
+          <div
+            role="status"
+            aria-label="Subscription data is stale"
+            className="mt-2 apoaap-callout-note px-2 py-1"
+          >
+            <Text className="text-xs text-cp-note-text">
+              Live billing read failed — showing the last known value, which may be
+              out of date.
+            </Text>
+          </div>
+        ) : null}
+
+        <Divider className="my-2.5" />
+
+        <div className="space-y-1">
+          <DetailRow label="Plan">
+            <Text className="text-xs">{sub.planName ?? "—"}</Text>
+          </DetailRow>
+          <DetailRow label="Price">
+            <Text className="text-xs">
+              {sub.price
+                ? `${sub.price.amount} ${sub.price.currencyCode}`
+                : "—"}
+            </Text>
+          </DetailRow>
+          <DetailRow label="Period start">
+            <Text className="text-xs">{formatDate(sub.currentPeriodStart)}</Text>
+          </DetailRow>
+          <DetailRow label="Period end">
+            <Text className="text-xs">{formatDate(sub.currentPeriodEnd)}</Text>
+          </DetailRow>
         </div>
-      ) : null}
-
-      <Divider className="my-3" />
-
-      <DetailRow label="Plan">
-        <Text>{sub.planName ?? "—"}</Text>
-      </DetailRow>
-      <DetailRow label="Price">
-        <Text>
-          {sub.price
-            ? `${sub.price.amount} ${sub.price.currencyCode}`
-            : "—"}
-        </Text>
-      </DetailRow>
-      <DetailRow label="Period start">
-        <Text>{formatDate(sub.currentPeriodStart)}</Text>
-      </DetailRow>
-      <DetailRow label="Period end">
-        <Text>{formatDate(sub.currentPeriodEnd)}</Text>
-      </DetailRow>
+      </div>
     </Card>
   );
 }
@@ -478,7 +504,7 @@ function CampaignMonitorCard({ shop }: { readonly shop: string }) {
 
   if (query.isLoading) {
     return (
-      <Card className="lg:col-span-2" aria-label="Campaigns and allowances" aria-busy="true">
+      <Card aria-label="Campaigns and allowances" aria-busy="true">
         <Title>Campaigns &amp; allowances</Title>
         <Text className="mt-2" role="status">Loading campaign state…</Text>
       </Card>
@@ -486,7 +512,7 @@ function CampaignMonitorCard({ shop }: { readonly shop: string }) {
   }
   if (query.isError) {
     return (
-      <Card className="lg:col-span-2" aria-label="Campaigns and allowances" role="alert">
+      <Card aria-label="Campaigns and allowances" role="alert">
         <Title>Campaigns &amp; allowances</Title>
         <Text className="mt-2 text-cp-danger">Campaign state is currently unavailable.</Text>
         <Text className="mt-1 text-xs text-tremor-content-subtle">{query.error.message}</Text>
@@ -495,7 +521,7 @@ function CampaignMonitorCard({ shop }: { readonly shop: string }) {
   }
   if (!query.data?.supported) {
     return (
-      <Card className="lg:col-span-2" aria-label="Campaigns and allowances">
+      <Card aria-label="Campaigns and allowances">
         <Title>Campaigns &amp; allowances</Title>
         <Text className="mt-2 text-tremor-content-subtle">
           This app connector does not provide campaign monitoring.
@@ -506,7 +532,7 @@ function CampaignMonitorCard({ shop }: { readonly shop: string }) {
   const monitor = query.data.monitor;
   if (!monitor) {
     return (
-      <Card className="lg:col-span-2" aria-label="Campaigns and allowances">
+      <Card aria-label="Campaigns and allowances">
         <Title>Campaigns &amp; allowances</Title>
         <Text className="mt-2 text-tremor-content-subtle">No campaign data exists for this shop.</Text>
       </Card>
@@ -528,7 +554,7 @@ function CampaignMonitorCard({ shop }: { readonly shop: string }) {
   ] as const;
 
   return (
-    <Card className="lg:col-span-2" aria-label="Campaigns and allowances">
+    <Card aria-label="Campaigns and allowances">
       <Flex justifyContent="between" alignItems="start" className="gap-4">
         <div>
           <Title>Campaigns &amp; allowances</Title>
@@ -630,87 +656,102 @@ function TagsCard({
   readonly onChanged: () => void;
 }) {
   const [label, setLabel] = useState("");
-  const [confirmText, setConfirmText] = useState("");
 
   const addTag = trpc.actions.addTag.useMutation({
     onSuccess: () => {
       setLabel("");
-      setConfirmText("");
       onChanged();
     },
   });
 
-  const confirmed = confirmText === shop;
-  const canSubmit = label.trim().length > 0 && confirmed && !addTag.isPending;
+  const removeTag = trpc.actions.removeTag.useMutation({
+    onSuccess: () => {
+      onChanged();
+    },
+  });
+
+  const isMutating = addTag.isPending || removeTag.isPending;
+  const canSubmit = label.trim().length > 0 && !isMutating;
 
   return (
-    <Card aria-label="Tags">
-      <Title>Tags</Title>
-      <div className="mt-3 flex flex-wrap gap-2" aria-label="Current tags">
-        {tags.length === 0 ? (
-          <Text className="text-tremor-content-subtle">No tags yet.</Text>
-        ) : (
-          tags.map((tag) => (
-            <Badge key={tag} aria-label={`Tag ${tag}`}>
-              {tag}
+    <Card className="p-4 sm:p-5 flex flex-col justify-between" aria-label="Tags">
+      <div>
+        <Flex justifyContent="between" alignItems="center">
+          <Title>Tags</Title>
+          {tags.length > 0 ? (
+            <Badge size="xs" color="gray">
+              {tags.length}
             </Badge>
-          ))
-        )}
+          ) : null}
+        </Flex>
+
+        <Divider className="my-2.5" />
+
+        <div className="flex flex-wrap gap-1.5 min-h-[3rem] items-start content-start" aria-label="Current tags">
+          {tags.length === 0 ? (
+            <Text className="text-xs text-tremor-content-subtle py-1">No tags yet.</Text>
+          ) : (
+            tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 rounded-md bg-tremor-brand-faint px-2 py-0.5 text-xs font-medium text-tremor-brand-emphasis border border-tremor-brand/20 dark:bg-dark-tremor-brand-faint dark:text-dark-tremor-brand-emphasis"
+                aria-label={`Tag ${tag}`}
+              >
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  onClick={() => removeTag.mutate({ shop, label: tag })}
+                  disabled={isMutating}
+                  className="rounded hover:bg-rose-500/20 text-tremor-content-subtle hover:text-rose-500 focus:outline-none p-0.5"
+                  title={`Remove ${tag}`}
+                  aria-label={`Remove tag ${tag}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))
+          )}
+        </div>
       </div>
 
-      <Divider className="my-3" />
-
-      <form
-        aria-label="Add tag"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!canSubmit) return;
-          addTag.mutate({ shop, label: label.trim(), confirmText });
-        }}
-      >
-        <label htmlFor="add-tag-label" className="sr-only">
-          Tag label
-        </label>
-        <TextInput
-          id="add-tag-label"
-          placeholder="Tag label"
-          value={label}
-          onValueChange={setLabel}
-          aria-label="Tag label"
-        />
-        <label htmlFor="add-tag-confirm" className="mt-2 block">
-          <Text className="text-xs text-tremor-content-subtle">
-            Type <code>{shop}</code> to confirm
-          </Text>
-        </label>
-        <TextInput
-          id="add-tag-confirm"
-          className="mt-1"
-          placeholder={shop}
-          value={confirmText}
-          onValueChange={setConfirmText}
-          aria-label="Type the shop domain to confirm"
-          error={confirmText.length > 0 && !confirmed}
-          errorMessage={
-            confirmText.length > 0 && !confirmed
-              ? "Must match the shop domain exactly"
-              : undefined
-          }
-        />
-        <Button
-          type="submit"
-          className="mt-2"
-          disabled={!canSubmit}
-          loading={addTag.isPending}
+      <div className="mt-4">
+        <Divider className="my-2.5" />
+        <form
+          aria-label="Add tag"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!canSubmit) return;
+            addTag.mutate({ shop, label: label.trim() });
+          }}
+          className="flex gap-2"
         >
-          Add tag
-        </Button>
+          <TextInput
+            placeholder="New tag…"
+            value={label}
+            onValueChange={setLabel}
+            aria-label="Tag label"
+            className="text-xs"
+          />
+          <Button
+            type="submit"
+            size="xs"
+            disabled={!canSubmit}
+            loading={addTag.isPending}
+          >
+            Add
+          </Button>
+        </form>
         {addTag.isError ? (
-          <Text className="mt-2 text-xs text-cp-danger" role="alert">
+          <Text className="mt-1.5 text-xs text-cp-danger" role="alert">
             {addTag.error.message}
           </Text>
         ) : null}
-      </form>
+        {removeTag.isError ? (
+          <Text className="mt-1.5 text-xs text-cp-danger" role="alert">
+            {removeTag.error.message}
+          </Text>
+        ) : null}
+      </div>
     </Card>
   );
 }
@@ -730,142 +771,112 @@ function NotesCard({
   readonly onChanged: () => void;
 }) {
   const [body, setBody] = useState("");
-  const [confirmText, setConfirmText] = useState("");
 
   const addNote = trpc.actions.addNote.useMutation({
     onSuccess: () => {
       setBody("");
-      setConfirmText("");
       onChanged();
     },
   });
 
-  const confirmed = confirmText === shop;
-  const canSubmit = body.trim().length > 0 && confirmed && !addNote.isPending;
+  const deleteNote = trpc.actions.deleteNote.useMutation({
+    onSuccess: () => {
+      onChanged();
+    },
+  });
+
+  const isMutating = addNote.isPending || deleteNote.isPending;
+  const canSubmit = body.trim().length > 0 && !isMutating;
 
   return (
-    <Card aria-label="Notes">
-      <Title>Recent notes</Title>
+    <Card className="p-4 sm:p-5 flex flex-col justify-between" aria-label="Notes">
+      <div>
+        <Flex justifyContent="between" alignItems="center">
+          <Title>Recent notes</Title>
+          {notes.length > 0 ? (
+            <Badge size="xs" color="gray">
+              {notes.length}
+            </Badge>
+          ) : null}
+        </Flex>
 
-      {notes.length === 0 ? (
-        <Text className="mt-2 text-tremor-content-subtle">No notes yet.</Text>
-      ) : (
-        <List className="mt-2" aria-label="Recent notes">
-          {notes.map((note) => (
-            <ListItem key={note.id} className="flex-col items-start">
-              <Text className="whitespace-pre-wrap">{note.body}</Text>
-              <Text className="text-xs text-tremor-content-subtle">
-                {note.authorId} · {formatTimestamp(note.createdAt)}
-              </Text>
-            </ListItem>
-          ))}
-        </List>
-      )}
+        <Divider className="my-2.5" />
 
-      <Divider className="my-3" />
-
-      <form
-        aria-label="Add note"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!canSubmit) return;
-          addNote.mutate({ shop, body: body.trim(), confirmText });
-        }}
-      >
-        <label htmlFor="add-note-body" className="sr-only">
-          Note body
-        </label>
-        <Textarea
-          id="add-note-body"
-          placeholder="Write a note…"
-          value={body}
-          onValueChange={setBody}
-          rows={3}
-          aria-label="Note body"
-        />
-        <label htmlFor="add-note-confirm" className="mt-2 block">
-          <Text className="text-xs text-tremor-content-subtle">
-            Type <code>{shop}</code> to confirm
-          </Text>
-        </label>
-        <TextInput
-          id="add-note-confirm"
-          className="mt-1"
-          placeholder={shop}
-          value={confirmText}
-          onValueChange={setConfirmText}
-          aria-label="Type the shop domain to confirm"
-          error={confirmText.length > 0 && !confirmed}
-          errorMessage={
-            confirmText.length > 0 && !confirmed
-              ? "Must match the shop domain exactly"
-              : undefined
-          }
-        />
-        <Button
-          type="submit"
-          className="mt-2"
-          disabled={!canSubmit}
-          loading={addNote.isPending}
-        >
-          Add note
-        </Button>
-        {addNote.isError ? (
-          <Text className="mt-2 text-xs text-cp-danger" role="alert">
-            {addNote.error.message}
-          </Text>
-        ) : null}
-      </form>
-    </Card>
-  );
-}
-
-const CONV_STATUS_TONE: Readonly<Record<string, "emerald" | "amber" | "gray">> = {
-  OPEN: "emerald",
-  SNOOZED: "amber",
-  CLOSED: "gray",
-};
-
-/** Per-shop conversation history (cp-merchant-360), linking into the inbox. */
-function ConversationHistoryCard({
-  conversations,
-}: {
-  readonly conversations: readonly ConversationSummary[];
-}) {
-  return (
-    <Card aria-label="Conversation history">
-      <Flex justifyContent="between" alignItems="baseline">
-        <Title>Conversations</Title>
-        <Link to="/inbox" className="text-xs text-tremor-brand hover:underline">
-          Open inbox →
-        </Link>
-      </Flex>
-      {conversations.length === 0 ? (
-        <Text className="mt-2 text-tremor-content-subtle">No conversations for this shop.</Text>
-      ) : (
-        <List className="mt-2" aria-label="Shop conversations">
-          {conversations.map((c) => (
-            <ListItem key={c.id}>
-              <div className="flex flex-col">
-                <Flex justifyContent="start" alignItems="center" className="gap-2">
-                  <Badge color={CONV_STATUS_TONE[c.status] ?? "gray"}>{c.status}</Badge>
-                  {c.priority !== "NONE" ? (
-                    <Badge color="blue" aria-label={`Priority ${c.priority}`}>
-                      {c.priority}
-                    </Badge>
-                  ) : null}
-                  {c.csatScore != null ? (
-                    <Text className="text-xs text-cp-success-text">CSAT {c.csatScore}/5</Text>
-                  ) : null}
-                </Flex>
-                <Text className="text-xs text-tremor-content-subtle">
-                  Last activity: {formatTimestamp(c.lastMessageAt)}
+        {notes.length === 0 ? (
+          <div className="min-h-[3rem] flex items-center">
+            <Text className="text-xs text-tremor-content-subtle">No notes yet.</Text>
+          </div>
+        ) : (
+          <div className="max-h-52 overflow-y-auto space-y-2 pr-1" aria-label="Recent notes list">
+            {notes.map((note) => (
+              <div
+                key={note.id}
+                className="group relative rounded-md border border-tremor-border/60 bg-tremor-background-muted/40 p-2 text-xs dark:border-dark-tremor-border/60 dark:bg-dark-tremor-background-muted/20"
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <Text className="text-xs whitespace-pre-wrap break-words flex-1 text-tremor-content-emphasis">
+                    {note.body}
+                  </Text>
+                  <button
+                    type="button"
+                    onClick={() => deleteNote.mutate({ noteId: note.id })}
+                    disabled={isMutating}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-tremor-content-subtle hover:text-rose-500 p-0.5"
+                    title="Delete note"
+                    aria-label="Delete note"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <Text className="mt-1.5 text-[11px] text-tremor-content-subtle truncate">
+                  {note.authorId} · {formatTimestamp(note.createdAt)}
                 </Text>
               </div>
-            </ListItem>
-          ))}
-        </List>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <Divider className="my-2.5" />
+        <form
+          aria-label="Add note"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!canSubmit) return;
+            addNote.mutate({ shop, body: body.trim() });
+          }}
+        >
+          <Textarea
+            placeholder="Write a note…"
+            value={body}
+            onValueChange={setBody}
+            rows={2}
+            aria-label="Note body"
+            className="text-xs"
+          />
+          <Flex justifyContent="end" className="mt-2">
+            <Button
+              type="submit"
+              size="xs"
+              disabled={!canSubmit}
+              loading={addNote.isPending}
+            >
+              Add note
+            </Button>
+          </Flex>
+          {addNote.isError ? (
+            <Text className="mt-1 text-xs text-cp-danger" role="alert">
+              {addNote.error.message}
+            </Text>
+          ) : null}
+          {deleteNote.isError ? (
+            <Text className="mt-1 text-xs text-cp-danger" role="alert">
+              {deleteNote.error.message}
+            </Text>
+          ) : null}
+        </form>
+      </div>
     </Card>
   );
 }
@@ -873,27 +884,50 @@ function ConversationHistoryCard({
 /** Per-shop audit trail (cp-merchant-360), newest first. */
 function AuditTrailCard({ audit }: { readonly audit: readonly AuditEntry[] }) {
   return (
-    <Card aria-label="Audit trail">
-      <Title>Audit trail</Title>
-      {audit.length === 0 ? (
-        <Text className="mt-2 text-tremor-content-subtle">No audit entries for this shop.</Text>
-      ) : (
-        <List className="mt-2" aria-label="Shop audit entries">
-          {audit.map((a) => (
-            <ListItem key={a.id} className="flex-col items-start">
-              <Flex justifyContent="between" alignItems="baseline" className="w-full gap-2">
-                <code className="text-xs">{a.action}</code>
-                <Text className="text-xs text-tremor-content-subtle">
-                  <time dateTime={a.createdAt}>{formatTimestamp(a.createdAt)}</time>
-                </Text>
-              </Flex>
-              <Text className="text-xs text-tremor-content-subtle">
-                {a.actorEmail ?? a.actorUserId} · {a.source}
-              </Text>
-            </ListItem>
-          ))}
-        </List>
-      )}
+    <Card className="p-4 sm:p-5 flex flex-col justify-between" aria-label="Audit trail">
+      <div>
+        <Flex justifyContent="between" alignItems="center">
+          <Title>Audit trail</Title>
+          {audit.length > 0 ? (
+            <Badge size="xs" color="gray">
+              {audit.length}
+            </Badge>
+          ) : null}
+        </Flex>
+
+        <Divider className="my-2.5" />
+
+        {audit.length === 0 ? (
+          <div className="min-h-[3rem] flex items-center">
+            <Text className="text-xs text-tremor-content-subtle">No audit entries for this shop.</Text>
+          </div>
+        ) : (
+          <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1" aria-label="Shop audit entries">
+            <List className="divide-y-0 space-y-1.5">
+              {audit.map((a) => (
+                <ListItem key={a.id} className="flex-col items-start py-1 px-0">
+                  <Flex justifyContent="between" alignItems="baseline" className="w-full gap-2">
+                    <code className="text-[11px] font-mono text-tremor-brand truncate">{a.action}</code>
+                    <Text className="text-[11px] text-tremor-content-subtle shrink-0">
+                      <time dateTime={a.createdAt}>{formatTimestamp(a.createdAt)}</time>
+                    </Text>
+                  </Flex>
+                  <Text className="text-[11px] text-tremor-content-subtle mt-0.5 truncate">
+                    {a.actorEmail ?? a.actorUserId} · {a.source}
+                  </Text>
+                </ListItem>
+              ))}
+            </List>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Divider className="my-2.5" />
+        <Text className="text-xs text-tremor-content-subtle">
+          Latest {audit.length} actions
+        </Text>
+      </div>
     </Card>
   );
 }
@@ -1187,7 +1221,10 @@ export default function MerchantDetail() {
   if (!shop) {
     return (
       <main className="p-6">
-        <Title>Merchant</Title>
+        <Title className="flex items-center gap-2">
+          <Store className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Merchant</span>
+        </Title>
         <Card className="mt-4" role="alert" aria-label="Missing shop parameter">
           <Text>No shop was specified.</Text>
         </Card>
@@ -1198,7 +1235,10 @@ export default function MerchantDetail() {
   if (detailQuery.isLoading) {
     return (
       <main className="p-6" aria-busy="true">
-        <Title>{shop}</Title>
+        <Title className="flex items-center gap-2">
+          <Store className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>{shop}</span>
+        </Title>
         <Text className="mt-2" role="status">
           Loading merchant…
         </Text>
@@ -1209,7 +1249,10 @@ export default function MerchantDetail() {
   if (detailQuery.isError) {
     return (
       <main className="p-6">
-        <Title>{shop}</Title>
+        <Title className="flex items-center gap-2">
+          <Store className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>{shop}</span>
+        </Title>
         <Card className="mt-4" role="alert" aria-label="Merchant load error">
           <Text>Couldn't load this merchant.</Text>
           <Text className="mt-1 text-xs text-tremor-content-subtle">
@@ -1227,7 +1270,10 @@ export default function MerchantDetail() {
     return (
       <main className="p-6">
         <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-          <Title>{shop}</Title>
+          <Title className="flex items-center gap-2">
+            <Store className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+            <span>{shop}</span>
+          </Title>
           <Link to="/merchants" className="text-tremor-brand hover:underline">
             ← Back to merchants
           </Link>
@@ -1245,7 +1291,10 @@ export default function MerchantDetail() {
   return (
     <main className="p-6" aria-label={`Merchant ${shop}`}>
       <Flex justifyContent="between" alignItems="baseline" className="mb-2">
-        <Title>{detail.name ?? shop}</Title>
+        <Title className="flex items-center gap-2">
+          <Store className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>{detail.name ?? shop}</span>
+        </Title>
         <Link to="/merchants" className="text-tremor-brand hover:underline">
           ← Back to merchants
         </Link>
@@ -1255,17 +1304,21 @@ export default function MerchantDetail() {
       </div>
 
       <TabGroup>
-        <TabList aria-label="Merchant sections">
+        <TabList aria-label="Merchant sections" className="overflow-visible">
           <Tab>Overview</Tab>
           <Tab>Activity</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
-            <Grid numItemsLg={2} className="mt-4 gap-4">
+            <Grid numItemsLg={3} className="mt-4 gap-4">
               <ShopInfoCard shop={shop} detail={detail} />
               <HealthCard shop={shop} />
               <BillingCard shop={shop} />
+            </Grid>
+            <div className="mt-4">
               <CampaignMonitorCard shop={shop} />
+            </div>
+            <Grid numItemsLg={3} className="mt-4 gap-4">
               <TagsCard
                 shop={shop}
                 tags={detail.tags}
@@ -1276,7 +1329,6 @@ export default function MerchantDetail() {
                 notes={detail.notes}
                 onChanged={() => void detailQuery.refetch()}
               />
-              <ConversationHistoryCard conversations={detail.conversations} />
               <AuditTrailCard audit={detail.audit} />
             </Grid>
           </TabPanel>

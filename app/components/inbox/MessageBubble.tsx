@@ -1,4 +1,5 @@
 import { FileText, Image as ImageIcon } from "lucide-react";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import type { ChatMessage } from "./types.js";
 import {
   SENDER_LABEL,
@@ -133,8 +134,9 @@ export function MessageBubble({
   return (
     <li className={bubbleClass} aria-label={`${SENDER_LABEL[message.senderType]} message`}>
       <div className="apoaap-inbox-bubble-header">
-        <span className="apoaap-inbox-bubble-sender">
-          {SENDER_LABEL[message.senderType]}
+        <span className="apoaap-inbox-bubble-sender flex items-center gap-1.5">
+          {message.senderType === "MERCHANT" ? <StoreAvatar shop={shop} size="xs" /> : null}
+          <span>{SENDER_LABEL[message.senderType]}</span>
           <span className="apoaap-inbox-bubble-meta"> · {senderId}</span>
         </span>
         <time

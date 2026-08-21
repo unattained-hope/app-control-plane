@@ -30,6 +30,50 @@ function seedConversation(db: FakeDb, id: string, status: "OPEN" | "SNOOZED" | "
 }
 
 describe("P1 Core Workflow & Composer Essentials", () => {
+  describe("ConversationService.assign", () => {
+    it("audits the (re)assignment in the same transaction", async () => {
+      const db = new FakeDb();
+      seedConversation(db, "conv-assign-1", "OPEN");
+      db.store.conversation[0]!.assignedTo = "agentA";
+      const svc = new ConversationService(db as never);
+
+      const actor = {
+        actorUserId: "u1",
+        actorEmail: "agent@apoaap.com",
+        appKey: "saleswitch",
+        ip: null,
+        userAgent: null,
+      };
+
+      await svc.assign(actor, "conv-assign-1", "agentB");
+      expect(db.store.conversation[0]!.assignedTo).toBe("agentB");
+      const audit = db.store.auditLog.find((a) => a.action === "conversation.assigned");
+      expect(audit).toBeTruthy();
+      expect(audit!.before).toEqual({ assignedTo: "agentA" });
+      expect(audit!.after).toEqual({ assignedTo: "agentB" });
+    });
+
+    it("rolls back the assignment when the same-tx audit insert fails", async () => {
+      const db = new FakeDb();
+      db.failAudit = true;
+      seedConversation(db, "conv-assign-2", "OPEN");
+      db.store.conversation[0]!.assignedTo = "agentA";
+      const svc = new ConversationService(db as never);
+
+      const actor = {
+        actorUserId: "u1",
+        actorEmail: "agent@apoaap.com",
+        appKey: "saleswitch",
+        ip: null,
+        userAgent: null,
+      };
+
+      await expect(svc.assign(actor, "conv-assign-2", "agentB")).rejects.toThrow();
+      expect(db.store.conversation[0]!.assignedTo).toBe("agentA"); // unchanged
+      expect(db.store.auditLog).toHaveLength(0);
+    });
+  });
+
   describe("ConversationService.setStatus", () => {
     it("updates status from OPEN to CLOSED and appends an audit log", async () => {
       const db = new FakeDb();
@@ -142,6 +186,94 @@ describe("P1 Core Workflow & Composer Essentials", () => {
       await expect(
         storeChatAttachmentFile(conversationId, filename, hugeData, "application/octet-stream"),
       ).rejects.toThrow(/exceeds maximum upload size/i);
+    });
+  });
+
+  describe("api.chat.upload action handler", () => {
+    it("accepts uploads from authenticated agents", async () => {
+      const { setDbForTesting } = await import("~/server/db.js");
+      const db = new FakeDb();
+      db.store.adminUser.push({
+        id: "agent-1",
+        email: "agent@apoaap.com",
+        name: "Dev Support",
+        role: "SUPPORT",
+        status: "ACTIVE",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      setDbForTesting(db as never);
+
+      const { action } = await import("~/routes/api.chat.upload.js");
+      const fileData = new TextEncoder().encode("screenshot data");
+      const file = new File([fileData], "screenshot.png", { type: "image/png" });
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const req = new Request("http://localhost:3000/api/chat/upload?conversationId=conv-upload-agent", {
+        method: "POST",
+        headers: {
+          "x-admin-role": "SUPPORT",
+          "x-admin-email": "agent@apoaap.com",
+        },
+        body: formData,
+      });
+
+      const res = await action({ request: req, params: {}, context: {} } as never);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.attachmentUrl).toContain("/api/chat/assets/conv-upload-agent/");
+      expect(json.filename).toBe("screenshot.png");
+      expect(json.mimeType).toBe("image/png");
+    });
+
+    it("accepts uploads from merchants with valid shop token", async () => {
+      const { setDbForTesting } = await import("~/server/db.js");
+      const db = new FakeDb();
+      setDbForTesting(db as never);
+
+      const { action } = await import("~/routes/api.chat.upload.js");
+      const { mintShopToken } = await import("~/server/realtime/sessionToken.js");
+      const token = mintShopToken("test-shop.myshopify.com", "saleswitch");
+
+      const fileData = new TextEncoder().encode("merchant log file");
+      const file = new File([fileData], "error.log", { type: "text/plain" });
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const req = new Request(`http://localhost:3000/api/chat/upload?conversationId=conv-upload-merchant&token=${encodeURIComponent(token)}`, {
+        method: "POST",
+        headers: {
+          "x-shop-token": token,
+        },
+        body: formData,
+      });
+
+      const res = await action({ request: req, params: {}, context: {} } as never);
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.attachmentUrl).toContain("/api/chat/assets/conv-upload-merchant/");
+      expect(json.filename).toBe("error.log");
+    });
+
+    it("rejects unauthorized uploads without agent credentials or shop token", async () => {
+      const { setDbForTesting } = await import("~/server/db.js");
+      const db = new FakeDb();
+      setDbForTesting(db as never);
+
+      const { action } = await import("~/routes/api.chat.upload.js");
+      const formData = new FormData();
+      formData.append("file", new File(["test"], "test.txt", { type: "text/plain" }));
+
+      const req = new Request("http://localhost:3000/api/chat/upload?conversationId=conv-unauth", {
+        method: "POST",
+        body: formData,
+      });
+
+      const res = await action({ request: req, params: {}, context: {} } as never);
+      expect(res.status).toBe(403);
     });
   });
 });

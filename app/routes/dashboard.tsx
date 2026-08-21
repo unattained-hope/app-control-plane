@@ -1,4 +1,5 @@
 import { Card, Metric, Text, Title, Flex, BarList, Grid } from "@tremor/react";
+import { LayoutDashboard } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
 
 /**
@@ -131,7 +132,10 @@ export default function Dashboard() {
   if (kpis.isLoading) {
     return (
       <main aria-busy="true" className="p-6">
-        <Title>KPI dashboard</Title>
+        <Title className="flex items-center gap-2">
+          <LayoutDashboard className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>KPI dashboard</span>
+        </Title>
         <Text className="mt-2" role="status">
           Loading KPIs…
         </Text>
@@ -142,7 +146,10 @@ export default function Dashboard() {
   if (kpis.isError) {
     return (
       <main className="p-6">
-        <Title>KPI dashboard</Title>
+        <Title className="flex items-center gap-2">
+          <LayoutDashboard className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>KPI dashboard</span>
+        </Title>
         <Card className="mt-4" role="alert" aria-label="KPI load error">
           <Text>Couldn't load KPI snapshots.</Text>
           <Text className="mt-1 text-xs text-tremor-content-subtle">
@@ -158,7 +165,10 @@ export default function Dashboard() {
   return (
     <main className="p-6" aria-label="KPI dashboard">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>KPI dashboard</Title>
+        <Title className="flex items-center gap-2">
+          <LayoutDashboard className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>KPI dashboard</span>
+        </Title>
         <Text className="text-xs text-tremor-content-subtle">
           Snapshot-sourced — no live joins
         </Text>

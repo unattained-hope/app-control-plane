@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Flex, Text, Title } from "@tremor/react";
-import { useOutletContext } from "react-router";
+import { useOutletContext, useSearchParams } from "react-router";
+import { Bell, Inbox as InboxIcon } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
+import { useAgentChatSocket } from "~/lib/agentChatSocket.js";
 import type { ShellOutletContext } from "~/routes/_shell.js";
+import { ChatSoundControls } from "~/components/inbox/ChatSoundControls.js";
 import { ConversationList } from "~/components/inbox/ConversationList.js";
 import { ConversationThread } from "~/components/inbox/ConversationThread.js";
 import { ConversationSidebar } from "~/components/inbox/ConversationSidebar.js";
@@ -18,12 +21,23 @@ import { formatTimestamp } from "~/components/inbox/format.js";
  */
 export default function Inbox() {
   const { role, userId } = useOutletContext<ShellOutletContext>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { notificationPermission, requestNotifications } = useAgentChatSocket();
+
+  const paramSelected = searchParams.get("selected") || searchParams.get("conversationId");
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("OPEN");
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(paramSelected ?? null);
   const [composerTab, setComposerTab] = useState<ComposerTab>("reply");
   const [draft, setDraft] = useState("");
   const utils = trpc.useUtils();
+
+  useEffect(() => {
+    if (paramSelected && paramSelected !== selectedId) {
+      setSelectedId(paramSelected);
+    }
+  }, [paramSelected, selectedId]);
 
   const searchQuery = trpc.chat.search.useQuery(
     {
@@ -60,6 +74,14 @@ export default function Inbox() {
     setSelectedId(id);
     setDraft("");
     setComposerTab("reply");
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("selected", id);
+        return next;
+      },
+      { replace: true },
+    );
   };
 
   const handleInsertCanned = (body: string) => {
@@ -69,13 +91,21 @@ export default function Inbox() {
 
   return (
     <div className="apoaap-inbox-page" aria-label="Agent inbox">
-      <Flex justifyContent="between" alignItems="baseline" className="apoaap-inbox-page-header">
-        <Title>Inbox</Title>
-        {searchQuery.data ? (
-          <Text className="shrink-0 text-xs text-tremor-content">
-            as of <time dateTime={new Date().toISOString()}>{formatTimestamp(new Date().toISOString())}</time>
-          </Text>
-        ) : null}
+      <Flex justifyContent="between" alignItems="center" className="apoaap-inbox-page-header">
+        <Title className="flex items-center gap-2">
+          <InboxIcon className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Inbox</span>
+        </Title>
+
+        <div className="flex items-center gap-3">
+          <ChatSoundControls />
+
+          {searchQuery.data ? (
+            <Text className="shrink-0 text-xs text-tremor-content">
+              as of <time dateTime={new Date().toISOString()}>{formatTimestamp(new Date().toISOString())}</time>
+            </Text>
+          ) : null}
+        </div>
       </Flex>
 
       <div className="apoaap-inbox-grid">

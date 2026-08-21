@@ -56,34 +56,42 @@ function mapActionError(err: unknown): never {
  */
 export const actionsRouter = router({
   addNote: requireAbility("reply")
-    .input(z.object({ shop: z.string(), body: z.string().min(1), confirmText: z.string() }))
+    .input(z.object({ shop: z.string(), body: z.string().min(1), confirmText: z.string().optional() }))
     .mutation(({ ctx, input }) =>
       getMerchantActionService()
-        .addNote(actionCtx(ctx, input.confirmText), input.shop, input.body)
+        .addNote(actionCtx(ctx, input.confirmText ?? input.shop), input.shop, input.body)
         .catch(mapActionError),
     ),
 
   editNote: requireAbility("reply")
-    .input(z.object({ noteId: z.string(), body: z.string().min(1), confirmText: z.string() }))
+    .input(z.object({ noteId: z.string(), body: z.string().min(1), confirmText: z.string().optional() }))
     .mutation(({ ctx, input }) =>
       getMerchantActionService()
-        .editNote(actionCtx(ctx, input.confirmText), input.noteId, input.body)
+        .editNote(actionCtx(ctx, input.confirmText ?? ""), input.noteId, input.body)
+        .catch(mapActionError),
+    ),
+
+  deleteNote: requireAbility("reply")
+    .input(z.object({ noteId: z.string(), confirmText: z.string().optional() }))
+    .mutation(({ ctx, input }) =>
+      getMerchantActionService()
+        .deleteNote(actionCtx(ctx, input.confirmText ?? ""), input.noteId)
         .catch(mapActionError),
     ),
 
   addTag: requireAbility("reply")
-    .input(z.object({ shop: z.string(), label: z.string().min(1), confirmText: z.string() }))
+    .input(z.object({ shop: z.string(), label: z.string().min(1), confirmText: z.string().optional() }))
     .mutation(({ ctx, input }) =>
       getMerchantActionService()
-        .addTag(actionCtx(ctx, input.confirmText), input.shop, input.label)
+        .addTag(actionCtx(ctx, input.confirmText ?? input.shop), input.shop, input.label)
         .catch(mapActionError),
     ),
 
   removeTag: requireAbility("reply")
-    .input(z.object({ shop: z.string(), label: z.string().min(1), confirmText: z.string() }))
+    .input(z.object({ shop: z.string(), label: z.string().min(1), confirmText: z.string().optional() }))
     .mutation(({ ctx, input }) =>
       getMerchantActionService()
-        .removeTag(actionCtx(ctx, input.confirmText), input.shop, input.label)
+        .removeTag(actionCtx(ctx, input.confirmText ?? input.shop), input.shop, input.label)
         .catch(mapActionError),
     ),
 

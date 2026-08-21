@@ -7,6 +7,7 @@ export type ComposerTab = "reply" | "note";
 
 export interface Conversation {
   readonly id: string;
+  readonly appKey?: string;
   readonly shop: string;
   readonly status: ConversationStatus;
   readonly assignedTo: string | null;

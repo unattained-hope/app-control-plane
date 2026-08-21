@@ -9,7 +9,6 @@ import { billingRouter } from "./routers/billing.js";
 import { dashboardRouter } from "./routers/dashboard.js";
 import { chatRouter } from "./routers/chat.js";
 import { cannedRouter } from "./routers/canned.js";
-import { routingRouter } from "./routers/routing.js";
 import { appRouter_ } from "./routers/app.js";
 import { complianceRouter } from "./routers/compliance.js";
 import { webhooksRouter } from "./routers/webhooks.js";
@@ -32,7 +31,6 @@ export const appRouter = router({
   dashboard: dashboardRouter,
   chat: chatRouter,
   canned: cannedRouter,
-  routing: routingRouter,
   app: appRouter_,
   compliance: complianceRouter,
   // Tier 2 — scale-readiness / ops resilience.

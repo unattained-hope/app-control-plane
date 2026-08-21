@@ -1,7 +1,13 @@
-import type { ConvStatus, Prisma, Priority, SenderType, SlaState } from "@prisma/client";
+import {
+  type ConvStatus,
+  Prisma,
+  type Priority,
+  type SenderType,
+  type SlaState,
+} from "@prisma/client";
 import { getDb } from "../db.js";
-import { getRoutingService } from "./routingService.js";
 import { getAuditService } from "./auditService.js";
+import { AuditActions } from "~/lib/auditActions.js";
 
 /** Upper bound on inbox-search page size (server-paginated; no full-list loads). */
 const MAX_SEARCH_PAGE_SIZE = 50;
@@ -27,6 +33,7 @@ export interface PersistedMessage {
 /** A conversation row for the agent inbox, including SLA/priority surfacing. */
 export interface ConversationListRow {
   readonly id: string;
+  readonly appKey: string;
   readonly shop: string;
   readonly status: ConvStatus;
   readonly assignedTo: string | null;
@@ -46,24 +53,26 @@ export class ConversationService {
   // Constructor injection mirrors complianceService — a DB-free test seam.
   constructor(private readonly db = getDb()) {}
 
+  /** Find a conversation by ID. */
+  async getById(id: string): Promise<ConversationListRow | null> {
+    const row = await this.db.conversation.findUnique({
+      where: { id },
+    });
+    if (!row) return null;
+    return toListRow(row as Parameters<typeof toListRow>[0]);
+  }
+
   /** Find an open conversation for a shop or create one (merchant-initiated). */
-  async getOrCreateForShop(appKey: string, shop: string): Promise<{ id: string }> {
+  async getOrCreateForShop(appKey: string, shop: string): Promise<{ id: string; isNew: boolean }> {
     const existing = await this.db.conversation.findFirst({
       where: { appKey, shop, status: { not: "CLOSED" } },
       orderBy: { lastMessageAt: "desc" },
     });
-    if (existing) return { id: existing.id };
+    if (existing) return { id: existing.id, isNew: false };
     const created = await this.db.conversation.create({
       data: { appKey, shop, status: "OPEN" },
     });
-    // Rule-based routing on creation (cp-conversation-routing). Best-effort: a
-    // routing failure must not block the merchant from opening a conversation.
-    try {
-      await getRoutingService().applyToNewConversation(appKey, created.id, { shop });
-    } catch {
-      // swallow — routing is an enhancement, not a prerequisite for chat
-    }
-    return { id: created.id };
+    return { id: created.id, isNew: true };
   }
 
   /**
@@ -359,6 +368,56 @@ export class ConversationService {
     return toListRow(updated);
   }
 
+  /**
+   * Assign (or reassign) a conversation, auditing the change in the same
+   * transaction. `system: true` attributes it as a JOB.
+   */
+  async assign(
+    ctx: {
+      readonly actorUserId: string;
+      readonly actorEmail?: string | null;
+      readonly appKey: string;
+      readonly ip: string | null;
+      readonly userAgent: string | null;
+    },
+    conversationId: string,
+    agentUserId: string,
+    opts: { system?: boolean } = {},
+  ): Promise<void> {
+    await this.db.$transaction(async (tx) => {
+      const before = await tx.conversation.findUnique({ where: { id: conversationId } });
+      if (!before || before.appKey !== ctx.appKey) {
+        throw new Prisma.PrismaClientKnownRequestError("Conversation not found", {
+          code: "P2025",
+          clientVersion: Prisma.prismaVersion.client,
+        });
+      }
+      const previousAssignee = before.assignedTo;
+      const shop = before.shop;
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: { assignedTo: agentUserId },
+      });
+      await getAuditService().append(
+        {
+          actorUserId: ctx.actorUserId,
+          actorEmail: ctx.actorEmail ?? null,
+          actorType: opts.system ? "SYSTEM" : "INTERNAL",
+          source: opts.system ? "JOB" : "UI",
+          appKey: ctx.appKey,
+          merchantShop: shop,
+          action: AuditActions.ConversationAssigned,
+          target: conversationId,
+          before: { assignedTo: previousAssignee },
+          after: { assignedTo: agentUserId },
+          ip: ctx.ip,
+          userAgent: ctx.userAgent,
+        },
+        tx,
+      );
+    });
+  }
+
   /** Sum unread merchant messages across open conversations (nav badge). */
   async unreadTotal(appKey: string): Promise<number> {
     const rows = await this.db.conversation.findMany({
@@ -371,6 +430,7 @@ export class ConversationService {
 
 function toListRow(c: {
   id: string;
+  appKey?: string;
   shop: string;
   status: ConvStatus;
   assignedTo: string | null;
@@ -387,6 +447,7 @@ function toListRow(c: {
 }): ConversationListRow {
   return {
     id: c.id,
+    appKey: c.appKey ?? "saleswitch",
     shop: c.shop,
     status: c.status,
     assignedTo: c.assignedTo,

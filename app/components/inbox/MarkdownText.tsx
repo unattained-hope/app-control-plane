@@ -9,15 +9,22 @@ function sanitizeUrl(rawUrl: string): string | null {
 }
 
 /**
- * Tokenizes inline Markdown: **bold**, *italic*, `code`, ~~strike~~, [text](url), raw URLs.
+ * Tokenizes inline Markdown:
+ * - Code: `code`
+ * - Links: [text](url)
+ * - Raw URLs: https://...
+ * - Bold + Italic: ***text*** or ___text___
+ * - Bold: **text** or __text__
+ * - Italic: *text* or _text_
+ * - Strikethrough: ~~text~~
  */
-function renderInlineTokens(text: string): React.ReactNode[] {
+export function renderInlineTokens(text: string): React.ReactNode[] {
   const tokens: React.ReactNode[] = [];
   let remaining = text;
   let keyIdx = 0;
 
   const inlineRegex =
-    /(\*\*(.+?)\*\*|__(.+?)__|(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|`([^`]+)`|~~(.+?)~~|\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/[^\s<]+[^<.,:;"')\]\s]))/;
+    /(?:`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|(https?:\/\/[^\s<]+[^<.,:;"')\]\s])|(?<!\*)\*\*\*(.+?)\*\*\*(?!\*)|(?<!_)___(.+?)___(?!_)|(?<!\*)\*\*(.+?)\*\*(?!\*)|(?<!_)__(.+?)__(?!_)|(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)|~~(.+?)~~)/;
 
   while (remaining.length > 0) {
     const match = remaining.match(inlineRegex);
@@ -33,24 +40,31 @@ function renderInlineTokens(text: string): React.ReactNode[] {
     const fullMatch = match[0];
     const matchIdx = match.index;
 
-    const boldContent = match[2] || match[3];
-    const italicContent = match[4];
-    const codeContent = match[5];
-    const strikeContent = match[6];
-    const linkText = match[7];
-    const linkUrlRaw = match[8];
-    const rawUrl = match[9];
+    const [
+      ,
+      codeContent,
+      linkText,
+      linkUrlRaw,
+      rawUrl,
+      boldItalicAsterisk,
+      boldItalicUnder,
+      boldAsterisk,
+      boldUnder,
+      italicAsterisk,
+      italicUnder,
+      strikeContent,
+    ] = match;
 
-    if (boldContent) {
-      tokens.push(<strong key={keyIdx++}>{renderInlineTokens(boldContent)}</strong>);
-    } else if (italicContent) {
-      tokens.push(<em key={keyIdx++}>{renderInlineTokens(italicContent)}</em>);
-    } else if (codeContent) {
+    const boldItalicContent = boldItalicAsterisk || boldItalicUnder;
+    const boldContent = boldAsterisk || boldUnder;
+    const italicContent = italicAsterisk || italicUnder;
+
+    if (codeContent !== undefined) {
       tokens.push(
         <code
           key={keyIdx++}
           style={{
-            background: "var(--cp-surface-2)",
+            background: "var(--cp-surface-2, rgba(255,255,255,0.1))",
             padding: "0.15rem 0.35rem",
             borderRadius: "0.25rem",
             fontSize: "0.85em",
@@ -60,9 +74,7 @@ function renderInlineTokens(text: string): React.ReactNode[] {
           {codeContent}
         </code>,
       );
-    } else if (strikeContent) {
-      tokens.push(<del key={keyIdx++}>{renderInlineTokens(strikeContent)}</del>);
-    } else if (linkText && linkUrlRaw) {
+    } else if (linkText !== undefined && linkUrlRaw !== undefined) {
       const linkUrl = sanitizeUrl(linkUrlRaw);
       if (linkUrl) {
         tokens.push(
@@ -72,7 +84,7 @@ function renderInlineTokens(text: string): React.ReactNode[] {
             target="_blank"
             rel="noreferrer noopener"
             style={{
-              color: "var(--cp-accent)",
+              color: "var(--cp-accent, #3b82f6)",
               textDecoration: "underline",
               wordBreak: "break-all",
             }}
@@ -83,7 +95,7 @@ function renderInlineTokens(text: string): React.ReactNode[] {
       } else {
         tokens.push(`[${linkText}](${linkUrlRaw})`);
       }
-    } else if (rawUrl) {
+    } else if (rawUrl !== undefined) {
       const cleanUrl = sanitizeUrl(rawUrl);
       if (cleanUrl) {
         tokens.push(
@@ -93,7 +105,7 @@ function renderInlineTokens(text: string): React.ReactNode[] {
             target="_blank"
             rel="noreferrer noopener"
             style={{
-              color: "var(--cp-accent)",
+              color: "var(--cp-accent, #3b82f6)",
               textDecoration: "underline",
               wordBreak: "break-all",
             }}
@@ -104,6 +116,18 @@ function renderInlineTokens(text: string): React.ReactNode[] {
       } else {
         tokens.push(rawUrl);
       }
+    } else if (boldItalicContent !== undefined) {
+      tokens.push(
+        <strong key={keyIdx++}>
+          <em>{renderInlineTokens(boldItalicContent)}</em>
+        </strong>,
+      );
+    } else if (boldContent !== undefined) {
+      tokens.push(<strong key={keyIdx++}>{renderInlineTokens(boldContent)}</strong>);
+    } else if (italicContent !== undefined) {
+      tokens.push(<em key={keyIdx++}>{renderInlineTokens(italicContent)}</em>);
+    } else if (strikeContent !== undefined) {
+      tokens.push(<del key={keyIdx++}>{renderInlineTokens(strikeContent)}</del>);
     }
 
     remaining = remaining.substring(matchIdx + fullMatch.length);

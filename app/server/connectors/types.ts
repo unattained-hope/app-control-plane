@@ -28,6 +28,7 @@ export interface MerchantRow {
   readonly status: string;
   readonly plan: string | null;
   readonly installedAt: string; // ISO
+  readonly avatarUrl?: string | null;
 }
 
 export interface MerchantPage {
@@ -51,6 +52,7 @@ export interface MerchantDetail {
   /** Deep-link to the merchant's Shopify/Partner context. */
   readonly shopifyAdminUrl: string;
   readonly asOf: string; // ISO replica read time
+  readonly avatarUrl?: string | null;
 }
 
 export type CampaignMonitorStatus =

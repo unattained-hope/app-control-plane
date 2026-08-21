@@ -4,6 +4,7 @@ import { Button, Text } from "@tremor/react";
 import { CheckCircle2, Clock, Pin, RotateCcw } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
 import { useAgentChatSocket } from "~/lib/agentChatSocket.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import type { ChatMessage, ComposerTab, Conversation } from "./types.js";
 import {
   PRIORITY_TONE,
@@ -146,7 +147,10 @@ export function ConversationThread({
     <section className="apoaap-inbox-thread" aria-label={`Conversation with ${conversation.shop}`}>
       <header className="apoaap-inbox-thread-header">
         <div className="apoaap-inbox-thread-header-main">
-          <ShopHeading shop={conversation.shop} />
+          <div className="flex items-center gap-3 min-w-0">
+            <StoreAvatar shop={conversation.shop} size="md" />
+            <ShopHeading shop={conversation.shop} />
+          </div>
           <div className="apoaap-inbox-thread-meta">
             <ConversationStatus status={conversation.status} />
             <Text className="text-sm text-tremor-content">

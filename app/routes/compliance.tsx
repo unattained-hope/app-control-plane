@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Badge, Button, Card, Flex, Text, TextInput, Title } from "@tremor/react";
+import { ShieldCheck } from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
@@ -7,6 +8,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { trpc } from "~/lib/trpc.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 
 /**
  * GDPR/DSR compliance queue (cp-compliance-dsr). ADMIN-only: the underlying
@@ -137,7 +139,15 @@ export default function Compliance() {
 
   const columns = useMemo(
     () => [
-      columnHelper.accessor("shop", { header: "Shop", cell: (i) => i.getValue() }),
+      columnHelper.accessor("shop", {
+        header: "Shop",
+        cell: (i) => (
+          <div className="flex items-center gap-2">
+            <StoreAvatar shop={i.getValue()} size="xs" />
+            <span>{i.getValue()}</span>
+          </div>
+        ),
+      }),
       columnHelper.accessor("topic", {
         header: "Request",
         cell: (i) => <Badge color="gray">{TOPIC_LABEL[i.getValue()]}</Badge>,
@@ -185,7 +195,10 @@ export default function Compliance() {
   return (
     <main className="p-6" aria-label="GDPR / DSR compliance queue">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>Compliance — data-subject requests</Title>
+        <Title className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Compliance — data-subject requests</span>
+        </Title>
         <Text className="text-xs text-tremor-content-subtle">
           30-day SLA · {rows.length} open
         </Text>

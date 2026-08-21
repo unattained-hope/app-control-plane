@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card, Text, Title, Flex, Badge, Button } from "@tremor/react";
+import { Key } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
 import type { AppRouter } from "~/server/trpc/root.js";
@@ -51,7 +52,10 @@ export default function BreakGlass() {
 
   return (
     <main className="apoaap-break-glass p-6" aria-label="Break-glass access">
-      <Title>Break-glass access</Title>
+      <Title className="flex items-center gap-2">
+        <Key className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+        <span>Break-glass access</span>
+      </Title>
       <Text className="text-xs text-tremor-content-subtle">
         Elevated access is justified (a typed reason) and time-boxed. Sensitive scopes
         need ADMIN approval before they activate.

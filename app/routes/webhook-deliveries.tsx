@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, Text, Title, Flex, Badge, Button } from "@tremor/react";
+import { Webhook } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "~/lib/trpc.js";
 import type { AppRouter } from "~/server/trpc/root.js";
@@ -47,7 +48,10 @@ export default function WebhookDeliveries() {
   if (isForbidden) {
     return (
       <main className="apoaap-webhooks p-6" aria-label="Webhook deliveries">
-        <Title>Failed webhook deliveries</Title>
+        <Title className="flex items-center gap-2">
+          <Webhook className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Failed webhook deliveries</span>
+        </Title>
         <Card className="mt-4" role="alert" aria-label="Webhook deliveries access denied">
           <Text className="font-medium">Ops access required</Text>
           <Text className="mt-1 text-xs text-tremor-content-subtle">
@@ -61,7 +65,10 @@ export default function WebhookDeliveries() {
   return (
     <main className="apoaap-webhooks p-6" aria-label="Webhook deliveries">
       <Flex justifyContent="between" alignItems="baseline" className="mb-4">
-        <Title>Failed webhook deliveries</Title>
+        <Title className="flex items-center gap-2">
+          <Webhook className="h-5 w-5 text-tremor-brand" aria-hidden="true" />
+          <span>Failed webhook deliveries</span>
+        </Title>
         <Text className="text-xs text-tremor-content-subtle">
           FAILED retries automatically; DEAD_LETTER needs a manual replay.
         </Text>

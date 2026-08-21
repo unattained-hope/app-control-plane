@@ -11,6 +11,7 @@ export const AuditActions = {
   // Merchant actions (cp-merchant-actions).
   MerchantNoteAdd: "merchant.note.add",
   MerchantNoteEdit: "merchant.note.edit",
+  MerchantNoteDelete: "merchant.note.delete",
   MerchantTagAdd: "merchant.tag.add",
   MerchantTagRemove: "merchant.tag.remove",
   MerchantPiiView: "merchant.pii.view",
@@ -37,12 +38,10 @@ export const AuditActions = {
   ConversationTagRemove: "conversation.tag.remove",
   ConversationCsatRecorded: "conversation.csat.recorded",
 
-  // Canned replies / routing rules (cp-canned-replies, cp-conversation-routing).
+  // Canned replies (cp-canned-replies).
   CannedReplyCreate: "canned.reply.create",
   CannedReplyUpdate: "canned.reply.update",
   CannedReplyDelete: "canned.reply.delete",
-  RoutingRuleCreate: "routing.rule.create",
-  RoutingRuleUpdate: "routing.rule.update",
 
   // Webhook reliability (cp-webhook-reliability). Job-sourced where noted.
   WebhookDeadLettered: "webhook.dead_lettered", // SYSTEM/JOB on retry exhaustion

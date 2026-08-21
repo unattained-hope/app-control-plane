@@ -3,6 +3,7 @@ import type { Role } from "@prisma/client";
 import { Badge, Button, Select, SelectItem, Text, TextInput } from "@tremor/react";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import { trpc } from "~/lib/trpc.js";
+import { StoreAvatar } from "~/components/StoreAvatar.js";
 import type { Conversation, Priority } from "./types.js";
 import { PRIORITIES, STATUSES, STATUS_LABEL, formatPriorityLabel } from "./format.js";
 import { canCompose } from "./ConversationComposer.js";
@@ -23,6 +24,14 @@ function Merchant360Card({ shop }: { readonly shop: string }) {
         </a>
       </div>
       <div className="p-3 rounded-lg bg-cp-surface-2 border border-cp-border space-y-2 text-xs">
+        <div className="flex items-center gap-2.5 pb-2 border-b border-cp-border/50">
+          <StoreAvatar shop={shop} size="sm" />
+          <div className="min-w-0 flex-1">
+            <span className="text-cp-text font-mono text-[11px] font-semibold truncate block" title={shop}>
+              {shop}
+            </span>
+          </div>
+        </div>
         <div className="flex justify-between items-center">
           <span className="text-cp-text-muted">Account Health</span>
           <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20 flex items-center gap-1">
@@ -32,12 +41,6 @@ function Merchant360Card({ shop }: { readonly shop: string }) {
         <div className="flex justify-between items-center">
           <span className="text-cp-text-muted">Active App</span>
           <span className="font-semibold text-cp-text font-mono">SaleSwitch / Badgy</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-cp-text-muted">Store Domain</span>
-          <span className="text-cp-text truncate max-w-[130px] font-mono text-[11px]" title={shop}>
-            {shop}
-          </span>
         </div>
       </div>
     </div>

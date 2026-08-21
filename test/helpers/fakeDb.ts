@@ -36,12 +36,12 @@ export class FakeDb {
   conversation: ReturnType<FakeDb["conversationModel"]>;
   message: ReturnType<FakeDb["messageModel"]>;
   cannedReply: ReturnType<FakeDb["cannedReplyModel"]>;
-  assignmentRule: ReturnType<FakeDb["assignmentRuleModel"]>;
   conversationTag: ReturnType<FakeDb["conversationTagModel"]>;
   breakGlassGrant: ReturnType<FakeDb["breakGlassGrantModel"]>;
   kpiSnapshot: ReturnType<FakeDb["kpiSnapshotModel"]>;
   // Tier 3 — growth & retention (cp-* capabilities). Generic CRUD via genericModel.
   merchantNote: ReturnType<FakeDb["genericModel"]>;
+  merchantTag: ReturnType<FakeDb["genericModel"]>;
   merchantHealthSnapshot: ReturnType<FakeDb["genericModel"]>;
   merchantLifecycleEvent: ReturnType<FakeDb["genericModel"]>;
   featureFlag: ReturnType<FakeDb["genericModel"]>;
@@ -58,8 +58,10 @@ export class FakeDb {
   usageAlertRule: ReturnType<FakeDb["genericModel"]>;
   usageAlertState: ReturnType<FakeDb["usageAlertStateModel"]>;
   usageSavedView: ReturnType<FakeDb["genericModel"]>;
+  adminUser: ReturnType<FakeDb["genericModel"]>;
 
   store: {
+    adminUser: Row[];
     webhookEvent: Row[];
     auditLog: Row[];
     complianceRequest: Row[];
@@ -67,11 +69,11 @@ export class FakeDb {
     conversation: Row[];
     message: Row[];
     cannedReply: Row[];
-    assignmentRule: Row[];
     conversationTag: Row[];
     breakGlassGrant: Row[];
     kpiSnapshot: Row[];
     merchantNote: Row[];
+    merchantTag: Row[];
     merchantHealthSnapshot: Row[];
     merchantLifecycleEvent: Row[];
     featureFlag: Row[];
@@ -96,11 +98,11 @@ export class FakeDb {
     conversation: [],
     message: [],
     cannedReply: [],
-    assignmentRule: [],
     conversationTag: [],
     breakGlassGrant: [],
     kpiSnapshot: [],
     merchantNote: [],
+    merchantTag: [],
     merchantHealthSnapshot: [],
     merchantLifecycleEvent: [],
     featureFlag: [],
@@ -117,6 +119,7 @@ export class FakeDb {
     usageAlertRule: [],
     usageAlertState: [],
     usageSavedView: [],
+    adminUser: [],
   };
 
   /** Set true to make every `auditLog.create` throw (force same-tx rollback). */
@@ -129,6 +132,14 @@ export class FakeDb {
   }
 
   constructor() {
+    this.adminUser = this.genericModel("adminUser", "adm", () => ({
+      name: "Dev User",
+      role: "SUPPORT",
+      status: "ACTIVE",
+      lastLogin: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
     this.webhookEvent = this.webhookEventModel();
     this.auditLog = this.auditLogModel();
     this.complianceRequest = this.complianceRequestModel();
@@ -136,11 +147,11 @@ export class FakeDb {
     this.conversation = this.conversationModel();
     this.message = this.messageModel();
     this.cannedReply = this.cannedReplyModel();
-    this.assignmentRule = this.assignmentRuleModel();
     this.conversationTag = this.conversationTagModel();
     this.breakGlassGrant = this.breakGlassGrantModel();
     this.kpiSnapshot = this.kpiSnapshotModel();
     this.merchantNote = this.genericModel("merchantNote", "mn");
+    this.merchantTag = this.genericModel("merchantTag", "mt");
     this.merchantHealthSnapshot = this.genericModel("merchantHealthSnapshot", "mhs");
     this.merchantLifecycleEvent = this.genericModel("merchantLifecycleEvent", "mle", () => ({
       occurredAt: new Date(),
@@ -461,8 +472,16 @@ export class FakeDb {
         }
         return { count: data.length };
       },
-      findUnique: async ({ where }: { where: { id: string } }) =>
-        rows.find((r) => r.id === where.id) ?? null,
+      findUnique: async ({ where }: { where: Record<string, unknown> }) => {
+        if ("id" in where && typeof where.id === "string") {
+          return rows.find((r) => r.id === where.id) ?? null;
+        }
+        if ("appKey_shop_label" in where && where.appKey_shop_label && typeof where.appKey_shop_label === "object") {
+          const c = where.appKey_shop_label as Record<string, unknown>;
+          return rows.find((r) => r.appKey === c.appKey && r.shop === c.shop && r.label === c.label) ?? null;
+        }
+        return rows.find((r) => genericMatch(r, where)) ?? null;
+      },
       findFirst: async ({
         where,
         orderBy,
@@ -494,8 +513,34 @@ export class FakeDb {
         applyUpdate(row, { ...data, updatedAt: new Date() });
         return row;
       },
-      delete: async ({ where }: { where: { id: string } }) => {
-        const i = rows.findIndex((r) => r.id === where.id);
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: Record<string, unknown>;
+        create: Record<string, unknown>;
+        update: Record<string, unknown>;
+      }) => {
+        const existing = rows.find((r) => genericMatch(r, where));
+        if (existing) {
+          applyUpdate(existing, { ...update, updatedAt: new Date() });
+          return existing;
+        }
+        const row: Row = { id: this.nextId(prefix), createdAt: new Date(), ...defaults(), ...create };
+        rows.push(row);
+        return row;
+      },
+      delete: async ({ where }: { where: Record<string, unknown> }) => {
+        let i = -1;
+        if ("id" in where && typeof where.id === "string") {
+          i = rows.findIndex((r) => r.id === where.id);
+        } else if ("appKey_shop_label" in where && where.appKey_shop_label && typeof where.appKey_shop_label === "object") {
+          const c = where.appKey_shop_label as Record<string, unknown>;
+          i = rows.findIndex((r) => r.appKey === c.appKey && r.shop === c.shop && r.label === c.label);
+        } else {
+          i = rows.findIndex((r) => genericMatch(r, where));
+        }
         if (i < 0) throw p2025();
         return rows.splice(i, 1)[0]!;
       },
@@ -578,7 +623,7 @@ export class FakeDb {
       update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
         const row = rows.find((r) => r.id === where.id);
         if (!row) throw p2025();
-        applyUpdate(row, data);
+        applyUpdate(row, { ...data, updatedAt: new Date() });
         return row;
       },
     };
@@ -680,7 +725,7 @@ export class FakeDb {
       update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
         const row = rows.find((r) => r.id === where.id);
         if (!row) throw p2025();
-        Object.assign(row, data);
+        applyUpdate(row, { ...data, updatedAt: new Date() });
         return row;
       },
       findMany: async ({
@@ -882,49 +927,6 @@ export class FakeDb {
         const i = rows.findIndex((r) => r.id === where.id);
         if (i < 0) throw p2025();
         return rows.splice(i, 1)[0]!;
-      },
-    };
-  }
-
-  private assignmentRuleModel() {
-    const rows = this.store.assignmentRule;
-    return {
-      create: async ({ data }: { data: Record<string, unknown> }) => {
-        const now = new Date();
-        const row: Row = {
-          id: this.nextId("ar"),
-          active: true,
-          assignTo: null,
-          setPriority: null,
-          createdAt: now,
-          updatedAt: now,
-          ...data,
-        };
-        rows.push(row);
-        return row;
-      },
-      findUnique: async ({ where }: { where: { id: string } }) =>
-        rows.find((r) => r.id === where.id) ?? null,
-      findMany: async ({
-        where,
-        orderBy,
-      }: {
-        where?: { appKey?: string; active?: boolean };
-        orderBy?: Record<string, "asc" | "desc">;
-      }) =>
-        sortRows(
-          rows.filter((r) => {
-            if (where?.appKey && r.appKey !== where.appKey) return false;
-            if (where?.active !== undefined && r.active !== where.active) return false;
-            return true;
-          }),
-          orderBy,
-        ),
-      update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const row = rows.find((r) => r.id === where.id);
-        if (!row) throw p2025();
-        Object.assign(row, data, { updatedAt: new Date() });
-        return row;
       },
     };
   }
